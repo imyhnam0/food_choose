@@ -306,23 +306,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('음식 선정'),
       ),
-      body: StreamBuilder<DocumentSnapshot>(
+      body: gameId == null
+          ? StreamBuilder<DocumentSnapshot>(
         stream: _firestore.collection('users').doc(Myuid).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (!snapshot.hasData || snapshot.data == null) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          var userData = snapshot.data!.data() as Map<String, dynamic>;
-          var gameRequests = userData['gameRequests'] ?? [];
-          final readyStatus = userData['readyStatus'] ?? {};
+          // 사용자 데이터 가져오기
+          final userData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final gameRequests = userData['gameRequests'] ?? [];
 
-          final allReady = participants.every((participant) => readyStatus[participant['uid']] == true);
           // 초대 요청이 있을 때 팝업 표시
           if (gameRequests.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -335,14 +336,46 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  '현재 방 참가자',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  '현재 게임에 참가하지 않았습니다.',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 20),
-                // 네모 박스 추가: 수락한 사람들 리스트 표시
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const InvitePage()),
+                    );
+                  },
+                  child: const Text('친구 목록 보기'),
+                ),
+              ],
+            ),
+          );
+        },
+      )
+          : StreamBuilder<DocumentSnapshot>(
+        stream: _firestore.collection('games').doc(gameId).snapshots(),
+        builder: (context, gameSnapshot) {
+          if (!gameSnapshot.hasData || gameSnapshot.data == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // 게임 데이터 가져오기
+          final gameData = gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final readyStatus = gameData['readyStatus'] ?? {};
+          final allReady = participants.every((participant) =>
+          readyStatus[participant['uid']] == true);
+
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  '현재 방 참가자',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
                 Container(
                   width: 300,
                   height: 200,
@@ -354,50 +387,63 @@ class _HomePageState extends State<HomePage> {
                   child: participants.isEmpty
                       ? const Center(child: Text('현재 참가자가 없습니다.'))
                       : ListView.builder(
-                          itemCount: participants.length,
-                          itemBuilder: (context, index) {
-                            final participant = participants[index];
-                            return ListTile(
-                              title: Text(participant['name']!),
-                              trailing: readyStatus[participant['uid']] == true
-                                  ? const Icon(Icons.check, color: Colors.green)
-                                  : const Icon(Icons.close, color: Colors.red),
+                    itemCount: participants.length,
+                    itemBuilder: (context, index) {
+                      final participant = participants[index];
+                      final isParticipantReady =
+                          readyStatus[participant['uid']] ?? false;
+
+                      return ListTile(
+                        title: Text(participant['name']!),
+                        trailing: isParticipantReady
+                            ? const Icon(Icons.check, color: Colors.green)
+                            : const Icon(Icons.close, color: Colors.red),
                       );
                     },
                   ),
                 ),
                 const SizedBox(height: 20),
-                Row(
+                Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ElevatedButton(
-                      onPressed: toggleReadyStatus,
-                      child: Text(isReady ? '준비 취소' : '준비하기'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: toggleReadyStatus,
+                          child: Text(isReady ? '준비 취소' : '준비하기'),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: allReady ? startGame : null,
+                          child: const Text('시작하기'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: allReady ? startGame : null,
-                      child: const Text('시작하기'),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () async{
-                        await leaveGame(Myuid!);
-                      },
-                      child: const Text('나가기'),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const InvitePage()),
-                        );
-                      },
-                      child: const Text('친구목록'),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () async {
+                            await leaveGame(Myuid!);
+                          },
+                          child: const Text('나가기'),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const InvitePage()),
+                            );
+                          },
+                          child: const Text('친구목록'),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                )
               ],
             ),
           );

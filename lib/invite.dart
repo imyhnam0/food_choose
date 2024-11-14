@@ -88,14 +88,23 @@ class _InvitePageState extends State<InvitePage> {
         final myDoc = await _firestore.collection('users').doc(Myuid).get();
         final myName = myDoc['name']; // 내 이름 가져오기
 
-        // 친구 요청 및 친구 목록 확인
-        final friendRequests = List<Map<String, dynamic>>.from(
-          friendDoc['friendRequests'] ?? [],
-        );
 
-        final friendList = List<String>.from(
-          friendDoc['friends'] ?? [],
-        );
+        // 친구 요청 및 친구 목록 확인
+        final friendRequests = friendDoc['friendRequests'] != null &&
+            friendDoc['friendRequests'] is List
+            ? (friendDoc['friendRequests'] as List)
+            .map((request) => Map<String, String>.from(request as Map<String, dynamic>))
+            .toList()
+            : [];
+
+
+        final friendList = friendDoc['friends'] != null && friendDoc['friends'] is List
+            ? (friendDoc['friends'] as List)
+            .map((friend) => Map<String, String>.from(friend as Map<String, dynamic>))
+            .toList()
+            : [];
+
+
 
         // 중복 확인: 친구 요청 목록에 존재하는지
         final alreadyRequested = friendRequests.any((request) => request['uid'] == Myuid);
@@ -163,10 +172,16 @@ class _InvitePageState extends State<InvitePage> {
           }
 
           // friends 필드를 가져오기
-          List<Map<String, String>> friends = (snapshot.data!['friends'] ?? [])
-              .map<Map<String, String>>((dynamic friend) {
-            return Map<String, String>.from(friend);
-          }).toList();
+          // 친구 목록 처리
+          List<Map<String, String>> friends = [];
+          if (snapshot.data!['friends'] != null && snapshot.data!['friends'] is List) {
+            friends = (snapshot.data!['friends'] as List)
+                .map((friend) => Map<String, String>.from(friend as Map<String, dynamic>))
+                .toList();
+          }
+
+
+
 
 
           return Column(
