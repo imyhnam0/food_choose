@@ -91,13 +91,55 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? Myuid;
-  List<Map<String, String>> acceptedParticipants = []; // 수락한 사람들의 리스트
+  List<Map<String, String>> participants = []; // 방 참가자 리스트
+  String? gameId; // 현재 사용자가 속한 게임 방 ID
 
   @override
   void initState() {
     super.initState();
     Myuid = Provider.of<UserProvider>(context, listen: false).uid;
+    fetchParticipants(); // 참가자 목록 가져오기
   }
+
+  // 방에 속한 참가자 가져오기
+  void fetchParticipants() {
+    _firestore
+        .collection('games')
+        .where('participants', arrayContains: Myuid) // 현재 사용자가 속한 방 검색
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        final gameDoc = snapshot.docs.first; // 첫 번째 방 선택
+        gameId = gameDoc.id;
+        final participantUids = List<String>.from(gameDoc['participants'] ?? []);
+        updateParticipantList(participantUids);
+      } else {
+        setState(() {
+          participants = [];
+          gameId = null;
+        });
+      }
+    });
+  }
+
+  // 참가자 UID를 기준으로 Firestore에서 이름 가져오기
+  Future<void> updateParticipantList(List<String> participantUids) async {
+    List<Map<String, String>> updatedParticipants = [];
+    for (String uid in participantUids) {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        updatedParticipants.add({
+          'uid': uid,
+          'name': userDoc['name'],
+        });
+      }
+    }
+    setState(() {
+      participants = updatedParticipants;
+    });
+  }
+
+
 
   // 초대 요청 수락
   Future<void> acceptInvite(Map<String, dynamic> invite) async {
@@ -128,35 +170,28 @@ class _HomePageState extends State<HomePage> {
 
       await _firestore.collection('games').doc(gameId).update({
         'participants': FieldValue.arrayUnion([Myuid]),
+        'participantDetails': FieldValue.arrayUnion([
+          {'uid': Myuid, 'name': currentUserName}
+        ]),
       });
     } else {
       // 기존 방이 없으면 새 방 생성
       gameId = DateTime.now().millisecondsSinceEpoch.toString();
-      print('생성된 gameId: $gameId');
-      print('새 방 생성 시작');
 
       await _firestore.collection('games').doc(gameId).set({
         'participants': [senderUid, Myuid], // 초대한 사람과 현재 사용자 추가
+        'participantDetails': [
+          {'uid': senderUid, 'name': senderName},
+          {'uid': Myuid, 'name': currentUserName}
+        ],
         'createdAt': FieldValue.serverTimestamp(),
       });
-      print('새 방 생성 완료');
     }
-
-    // 수락한 사람 리스트 업데이트
-    setState(() {
-      if (!acceptedParticipants.any((p) => p['uid'] == senderUid)) {
-        acceptedParticipants.add({'uid': senderUid, 'name': senderName});
-      }
-      if (!acceptedParticipants.any((p) => p['uid'] == Myuid)) {
-        acceptedParticipants.add({'uid': Myuid!, 'name': currentUserName});
-      }
-    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$senderName님의 초대를 수락했습니다.')),
     );
   }
-
 
   // 초대 요청 거절
   Future<void> rejectInvite(Map<String, dynamic> invite) async {
@@ -168,6 +203,22 @@ class _HomePageState extends State<HomePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$senderName님의 초대를 거절했습니다.')),
+    );
+  }
+  // 참가자 나가기
+  Future<void> leaveGame(String uid) async {
+    if (gameId == null) return;
+
+    // 게임에서 참가자 제거
+    await _firestore.collection('games').doc(gameId).update({
+      'participants': FieldValue.arrayRemove([uid]),
+      'participantDetails': FieldValue.arrayRemove([
+        {'uid': uid, 'name': participants.firstWhere((p) => p['uid'] == uid)['name']}
+      ]),
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('방에서 나갔습니다.')),
     );
   }
 
@@ -230,7 +281,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'Food',
+                  '현재 방 참가자',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -246,10 +297,12 @@ class _HomePageState extends State<HomePage> {
                     border: Border.all(color: Colors.blueGrey),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: ListView.builder(
-                    itemCount: acceptedParticipants.length,
+                  child: participants.isEmpty
+                      ? const Center(child: Text('현재 참가자가 없습니다.'))
+                      : ListView.builder(
+                    itemCount: participants.length,
                     itemBuilder: (context, index) {
-                      final participant = acceptedParticipants[index];
+                      final participant = participants[index];
                       return ListTile(
                         title: Text(participant['name']!),
                       );
@@ -262,25 +315,16 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     ElevatedButton(
                       onPressed: () async {
-                        // Firestore에 게임 데이터 저장
-                        final gameId = DateTime.now().millisecondsSinceEpoch.toString(); // 고유한 게임 ID 생성
-                        await _firestore.collection('games').doc(gameId).set({
-                          'participants': acceptedParticipants.map((p) => p['uid']).toList(),
-                          'createdAt': FieldValue.serverTimestamp(),
-                        });
 
-                        // FoodChoosePage로 데이터 전달
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FoodChoosePage(
-                              participants: acceptedParticipants,
-                              gameId: gameId,
-                            ),
-                          ),
-                        );
                       },
                       child: const Text('시작하기'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () async{
+                        await leaveGame(Myuid!);
+                      },
+                      child: const Text('나가기'),
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton(
