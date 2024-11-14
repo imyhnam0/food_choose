@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'friendrequest.dart';
 import 'user_provider.dart';
 import 'package:provider/provider.dart';
 
 class FoodChoosePage extends StatefulWidget {
-  final List<Map<String, String>> participants; // 수락한 참가자 리스트
-  final String gameId; // 게임 ID
-  const FoodChoosePage({super.key, required this.participants, required this.gameId});
+  final String gameId; // 현재 사용자가 속한 게임 ID
+  const FoodChoosePage({super.key, required this.gameId});
 
   @override
   State<FoodChoosePage> createState() => _FoodChoosePageState();
@@ -17,9 +15,36 @@ class _FoodChoosePageState extends State<FoodChoosePage> {
   final TextEditingController _foodController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool isSubmitted = false; // 내가 제출했는지 여부
+  List<Map<String, String>> participants = []; // 참가자 목록
+
+  @override
+  void initState() {
+    super.initState();
+    fetchParticipants();
+  }
+
+  // 참가자 목록 가져오기
+  void fetchParticipants() {
+    _firestore.collection('games').doc(widget.gameId).snapshots().listen((snapshot) {
+      if (snapshot.exists) {
+        final participantDetails = List<Map<String, dynamic>>.from(snapshot.data()?['participantDetails'] ?? []);
+        setState(() {
+          participants = participantDetails.map((p) {
+            return {
+              'uid': p['uid'] as String,
+              'name': p['name'] as String,
+            };
+          }).toList();
+        });
+
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final myUid = Provider.of<UserProvider>(context, listen: false).uid;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('음식 입력'),
@@ -51,7 +76,7 @@ class _FoodChoosePageState extends State<FoodChoosePage> {
                       .collection('games')
                       .doc(widget.gameId)
                       .collection('foods')
-                      .doc(Provider.of<UserProvider>(context, listen: false).uid)
+                      .doc(myUid)
                       .set({
                     'food': food,
                     'submitted': true,
@@ -83,7 +108,7 @@ class _FoodChoosePageState extends State<FoodChoosePage> {
               }
 
               final foods = snapshot.data!.docs.map((doc) => doc['food'] as String).toList();
-              final allSubmitted = foods.length == widget.participants.length;
+              final allSubmitted = foods.length == participants.length;
 
               if (allSubmitted) {
                 return ElevatedButton(
@@ -130,4 +155,3 @@ class ResultPage extends StatelessWidget {
     );
   }
 }
-

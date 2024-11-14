@@ -314,11 +314,25 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton(
-                      onPressed: () async {
-
+                      onPressed: () {
+                        if (gameId != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FoodChoosePage(
+                                gameId: gameId!, // null이 아님을 보장하고 전달
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('게임 방이 존재하지 않습니다.')),
+                          );
+                        }
                       },
                       child: const Text('시작하기'),
                     ),
+
                     const SizedBox(width: 10),
                     ElevatedButton(
                       onPressed: () async{
