@@ -13,21 +13,22 @@ class FriendRequestsPage extends StatelessWidget {
       final friendUid = friend['uid']!;
       final friendName = friend['name']!;
 
-// 친구 요청 수락 처리
+      // Firestore에서 현재 사용자의 이름 가져오기
+      final currentUserDoc = await _firestore.collection('users').doc(userId).get();
+      final currentUserName = currentUserDoc['name'];
+
+      // 현재 사용자 문서 업데이트 (친구 목록 추가 및 요청 제거)
       await _firestore.collection('users').doc(userId).update({
         'friends': FieldValue.arrayUnion([
-          {'uid': friendUid, 'name': friendName} // 친구 목록에 Map으로 추가
+          {'uid': friendUid, 'name': friendName} // Map으로 친구 추가
         ]),
         'friendRequests': FieldValue.arrayRemove([friend]), // 요청 목록에서 제거
       });
 
-// 상대방의 friends 필드에도 현재 사용자의 uid와 name 추가
-      final currentUserDoc = await _firestore.collection('users').doc(userId).get();
-      final currentUserName = currentUserDoc['name'];
-
+      // 상대방 문서 업데이트 (현재 사용자를 친구 목록에 추가)
       await _firestore.collection('users').doc(friendUid).update({
         'friends': FieldValue.arrayUnion([
-          {'uid': userId, 'name': currentUserName} // 상대방도 Map 형태로 추가
+          {'uid': userId, 'name': currentUserName} // Map으로 현재 사용자 추가
         ]),
       });
 
@@ -36,6 +37,7 @@ class FriendRequestsPage extends StatelessWidget {
       print('오류 발생: $e');
     }
   }
+
 
   // 친구 요청 거절
   Future<void> rejectFriendRequest(Map<String, String> friend) async {

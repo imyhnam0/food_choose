@@ -38,6 +38,37 @@ class _InvitePageState extends State<InvitePage> {
       );
     }
   }
+  // 게임 참가 요청
+  Future<void> sendGameRequest(String friendUid, String friendName) async {
+    try {
+      // 내 정보 가져오기
+      final myDoc = await _firestore.collection('users').doc(Myuid).get();
+      final myName = myDoc['name']; // 내 이름
+      final myUid = myDoc['uid'];  // 내 UID
+
+      // 초대 요청 추가
+      await _firestore.collection('users').doc(friendUid).update({
+        'gameRequests': FieldValue.arrayUnion([
+          {
+            'senderUid': myUid, // 내 UID
+            'senderName': myName, // 내 이름
+            'status': 'pending',
+          }
+        ]),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$friendName님에게 초대를 보냈습니다.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('초대 요청 실패: $e')),
+      );
+    }
+  }
+
+
+
 
   // 친구 추가 요청 함수
   Future<void> sendFriendRequest(String friendEmail) async {
@@ -149,11 +180,22 @@ class _InvitePageState extends State<InvitePage> {
 
                     return ListTile(
                       title: Text(friendName), // 친구 이름 표시
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          await removeFriend(friend); // 친구 삭제
-                        },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.add, color: Colors.green),
+                            onPressed: () {
+                              sendGameRequest(friend['uid']!, friend['name']!);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              await removeFriend(friend); // 친구 삭제
+                            },
+                          ),
+                        ],
                       ),
                     );
                   },
