@@ -93,7 +93,7 @@ class _HomePageState extends State<HomePage> {
   String? Myuid;
   List<Map<String, String>> participants = []; // 방 참가자 리스트
   String? gameId; // 현재 사용자가 속한 게임 방 ID
-
+  bool isReady = false; // 내가 준비 상태인지 여부
 
   @override
   void initState() {
@@ -106,11 +106,11 @@ class _HomePageState extends State<HomePage> {
   void fetchParticipants() {
     _firestore
         .collection('games')
-        .where('participants', arrayContains: Myuid) // 현재 사용자가 속한 방 검색
+        .where('participants', arrayContains: Myuid)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.docs.isNotEmpty) {
-        final gameDoc = snapshot.docs.first; // 첫 번째 방 선택
+        final gameDoc = snapshot.docs.first;
         gameId = gameDoc.id;
         final participantUids = List<String>.from(gameDoc['participants'] ?? []);
         updateParticipantList(participantUids);
@@ -140,6 +140,57 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> toggleReadyStatus() async {
+    if (gameId == null) return;
+
+    try {
+      // Firestore에서 현재 readyStatus를 가져오기
+      final gameDoc = await _firestore.collection('games').doc(gameId).get();
+      final Map<String, dynamic> readyStatus = gameDoc.data()?['readyStatus'] ?? {};
+
+      // 현재 사용자의 상태를 반전시켜 업데이트
+      readyStatus[Myuid!] = !isReady;
+
+      // Firestore 업데이트
+      await _firestore.collection('games').doc(gameId).update({
+        'readyStatus': readyStatus,
+      });
+
+      // 로컬 상태 업데이트
+      setState(() {
+        isReady = readyStatus[Myuid!]!;
+      });
+    } catch (e) {
+      print('Error toggling ready status: $e');
+    }
+  }
+
+
+  Future<void> startGame() async {
+    if (gameId == null) return;
+
+    final gameDoc = await _firestore.collection('games').doc(gameId).get();
+    final readyStatus = gameDoc['readyStatus'] ?? {};
+
+    if (readyStatus.values.every((ready) => ready == true)) {
+      for (final participant in participants) {
+        final uid = participant['uid'];
+        // 각 참가자를 `FoodChoosePage`로 보내기
+        if (uid == Myuid) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FoodChoosePage(gameId: gameId!),
+            ),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('모든 참가자가 준비 완료해야 합니다.')),
+      );
+    }
+  }
 
 
   // 초대 요청 수락
@@ -269,7 +320,9 @@ class _HomePageState extends State<HomePage> {
 
           var userData = snapshot.data!.data() as Map<String, dynamic>;
           var gameRequests = userData['gameRequests'] ?? [];
+          final readyStatus = userData['readyStatus'] ?? {};
 
+          final allReady = participants.every((participant) => readyStatus[participant['uid']] == true);
           // 초대 요청이 있을 때 팝업 표시
           if (gameRequests.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -301,11 +354,14 @@ class _HomePageState extends State<HomePage> {
                   child: participants.isEmpty
                       ? const Center(child: Text('현재 참가자가 없습니다.'))
                       : ListView.builder(
-                    itemCount: participants.length,
-                    itemBuilder: (context, index) {
-                      final participant = participants[index];
-                      return ListTile(
-                        title: Text(participant['name']!),
+                          itemCount: participants.length,
+                          itemBuilder: (context, index) {
+                            final participant = participants[index];
+                            return ListTile(
+                              title: Text(participant['name']!),
+                              trailing: readyStatus[participant['uid']] == true
+                                  ? const Icon(Icons.check, color: Colors.green)
+                                  : const Icon(Icons.close, color: Colors.red),
                       );
                     },
                   ),
@@ -315,25 +371,14 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton(
-                      onPressed: () {
-                        if (gameId != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => FoodChoosePage(
-                                gameId: gameId!, // null이 아님을 보장하고 전달
-                              ),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('게임 방이 존재하지 않습니다.')),
-                          );
-                        }
-                      },
+                      onPressed: toggleReadyStatus,
+                      child: Text(isReady ? '준비 취소' : '준비하기'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: allReady ? startGame : null,
                       child: const Text('시작하기'),
                     ),
-
                     const SizedBox(width: 10),
                     ElevatedButton(
                       onPressed: () async{
