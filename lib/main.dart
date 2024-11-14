@@ -94,6 +94,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, String>> participants = []; // 방 참가자 리스트
   String? gameId; // 현재 사용자가 속한 게임 방 ID
 
+
   @override
   void initState() {
     super.initState();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_provider.dart';
 import 'package:provider/provider.dart';
+import 'resultfood.dart';
 
 class FoodChoosePage extends StatefulWidget {
   final String gameId; // 현재 사용자가 속한 게임 ID
@@ -133,25 +134,3 @@ class _FoodChoosePageState extends State<FoodChoosePage> {
   }
 }
 
-class ResultPage extends StatelessWidget {
-  final List<String> foods;
-
-  const ResultPage({super.key, required this.foods});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('결과 보기'),
-      ),
-      body: ListView.builder(
-        itemCount: foods.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(foods[index]),
-          );
-        },
-      ),
-    );
-  }
-}
