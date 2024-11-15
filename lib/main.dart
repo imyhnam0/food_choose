@@ -172,25 +172,29 @@ class _HomePageState extends State<HomePage> {
     final gameDoc = await _firestore.collection('games').doc(gameId).get();
     final readyStatus = gameDoc['readyStatus'] ?? {};
 
+    // 모든 참가자가 준비 상태인지 확인
     if (readyStatus.values.every((ready) => ready == true)) {
-      for (final participant in participants) {
-        final uid = participant['uid'];
-        // 각 참가자를 `FoodChoosePage`로 보내기
-        if (uid == Myuid) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FoodChoosePage(gameId: gameId!),
-            ),
-          );
-        }
-      }
+      // Firestore에서 gameState를 "started"로 업데이트
+      await _firestore.collection('games').doc(gameId).update({
+        'gameState': 'started',
+      });
+
+      // 모든 참가자의 readyStatus를 false로 초기화
+      final updatedReadyStatus = readyStatus.map((key, value) => MapEntry(key, false));
+      await _firestore.collection('games').doc(gameId).update({
+        'readyStatus': updatedReadyStatus,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('게임이 시작되었습니다.')),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('모든 참가자가 준비 완료해야 합니다.')),
       );
     }
   }
+
 
 
   // 초대 요청 수락
@@ -236,6 +240,8 @@ class _HomePageState extends State<HomePage> {
           {'uid': senderUid, 'name': senderName},
           {'uid': Myuid, 'name': currentUserName}
         ],
+        'readyStatus': {}, // 초기화된 레디 상태
+        'gameState': 'waiting', // 초기 상태는 대기 상태
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
@@ -306,7 +312,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -366,6 +371,16 @@ class _HomePageState extends State<HomePage> {
           final readyStatus = gameData['readyStatus'] ?? {};
           final allReady = participants.every((participant) =>
           readyStatus[participant['uid']] == true);
+          final gameState = gameData['gameState'] ?? 'waiting';
+          // 게임이 시작되었는지 확인
+          if (gameState == 'started') {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => FoodChoosePage(gameId: gameId!)),
+              );
+            });
+          }
 
           return Center(
             child: Column(
