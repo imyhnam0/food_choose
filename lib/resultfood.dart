@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_provider.dart';
 import 'package:provider/provider.dart';
+import 'nextStage.dart';
 
 class ResultPage extends StatefulWidget {
   final String gameId;
@@ -16,43 +17,75 @@ class _ResultPageState extends State<ResultPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Map<String, int> votes = {};
   List<String> currentSelection = [];
-  int stage = 5; // 단계별 음식 개수 (5 → 3 → 1)
   bool allReady = false;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    resetReadyStatus(); // readyStatus 초기화
     fetchFoods();
     monitorReadyState();
   }
 
-  // 음식 데이터 가져오기
-  void fetchFoods() {
-    _firestore
-        .collection('games')
-        .doc(widget.gameId)
-        .collection('foods')
-        .get()
-        .then((querySnapshot) {
-      final allFoods = <String>[];
-      for (var doc in querySnapshot.docs) {
-        final foodString = doc['food'] as String;
-        allFoods.addAll(foodString.split(',').map((food) => food.trim()));
+  // `readyStatus` 초기화
+  void resetReadyStatus() async {
+    try {
+      final gameDoc = await _firestore.collection('games').doc(widget.gameId).get();
+      if (gameDoc.exists) {
+        final readyStatus = gameDoc.data()?['readyStatus'] ?? {};
+
+        // 모든 참가자의 readyStatus를 false로 초기화
+        final updatedReadyStatus = readyStatus.map((key, value) => MapEntry(key, false));
+        await _firestore.collection('games').doc(widget.gameId).update({
+          'readyStatus': updatedReadyStatus,
+        });
+
+        print('readyStatus 초기화 완료.');
       }
-      setState(() {
-        currentSelection = allFoods.toSet().toList(); // 중복 제거
-        resetVotes();
-      });
-    });
+    } catch (e) {
+      print('readyStatus 초기화 중 오류 발생: $e');
+    }
   }
 
-  // 투표 초기화
-  void resetVotes() {
-    votes = {for (var food in currentSelection) food: 0};
+  // 음식 데이터 가져오기
+  void fetchFoods() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final doc = await _firestore
+          .collection('games')
+          .doc(widget.gameId)
+          .collection('foods')
+          .doc('allFoods') // 'allFoods' 문서에서 데이터 가져오기
+          .get();
+
+      if (doc.exists) {
+        final List<dynamic> foodList = doc['food'] ?? [];
+        setState(() {
+          currentSelection = List<String>.from(foodList);
+        });
+        print('Fetched food list: $currentSelection');
+      } else {
+        setState(() {
+          currentSelection = [];
+        });
+      }
+    } catch (error) {
+      print('Error fetching foods: $error');
+    } finally {
+      setState(() {
+        isLoading = false; // 로딩 종료
+      });
+    }
   }
+
+
 
   // 모든 참가자가 준비되었는지 모니터링
-  void monitorReadyState() {
+  void monitorReadyState() async{
     _firestore
         .collection('games')
         .doc(widget.gameId)
@@ -60,148 +93,77 @@ class _ResultPageState extends State<ResultPage> {
         .listen((snapshot) async {
       if (snapshot.exists) {
         final readyStatus = snapshot.data()?['readyStatus'] ?? {};
-        final allVotes = snapshot.data()?['votes'] ?? {};
-        final participantCount = readyStatus.keys.length;
+        final votesData = snapshot.data()?['votes'] ?? {};
 
-        // 모든 사용자가 준비되었는지 확인
+        // 모든 사용자가 준비 상태인지 확인
+        final allReady = readyStatus.values.every((status) => status == true);
+
         setState(() {
-          allReady = readyStatus.values.where((status) => status == true).length ==
-              participantCount;
+          this.allReady = allReady;
         });
 
         if (allReady) {
-          // 합산 후 다음 단계로 진행
-          await aggregateVotes(allVotes);
-          if (stage > 1) {
-            showResultsPopup();
-            Future.delayed(const Duration(seconds: 3), () {
-              filterTopFoods();
-            });
-          } else {
-            showResultsPopup();
-            Future.delayed(const Duration(seconds: 3), () {
-              showFinalResult(currentSelection.first);
-            });
-          }
-
-          // `readyStatus`를 다시 초기화 (다음 투표를 위해)
-          resetReadyStatus();
+          await aggregateVotes(votesData); // 투표 데이터 합산 및 저장
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            // 모든 사람이 준비되면 화면 넘어가기
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NextstagePage(gameId: widget.gameId),
+              ),
+            );
+          });
         }
       }
     });
   }
 
-  // `readyStatus` 초기화
-  void resetReadyStatus() async {
-    final readyStatus = await _firestore
-        .collection('games')
-        .doc(widget.gameId)
-        .get()
-        .then((doc) => doc.data()?['readyStatus'] ?? {});
-
-    final updatedReadyStatus = readyStatus.map((key, value) => MapEntry(key, false));
-
-    await _firestore.collection('games').doc(widget.gameId).update({
-      'readyStatus': updatedReadyStatus,
-    });
-  }
-
-  // Firestore에서 모든 사용자 투표 데이터를 합산
-  Future<void> aggregateVotes(Map<String, dynamic> allVotes) async {
+  // 투표 데이터를 Firestore에 저장 (합산 및 내림차순 정렬)
+  Future<void> aggregateVotes(Map<String, dynamic> votesData) async {
     final aggregatedVotes = <String, int>{};
-    for (final userVotes in allVotes.values) {
+
+    // 모든 사용자 투표 데이터를 합산
+    votesData.forEach((userId, userVotes) {
       final userVoteMap = Map<String, int>.from(userVotes);
       userVoteMap.forEach((food, count) {
         aggregatedVotes[food] = (aggregatedVotes[food] ?? 0) + count;
       });
-    }
-
-    setState(() {
-      votes = aggregatedVotes;
     });
-  }
 
-  // 상위 음식 필터링
-  void filterTopFoods() {
-    final sortedVotes = votes.entries.toList()
+    // 내림차순 정렬
+    final sortedFoods = aggregatedVotes.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final filtered = sortedVotes.where((entry) => entry.value > 0).toList();
 
-    if (filtered.isEmpty) {
-      showFinalResult('투표된 항목이 없습니다');
-      return;
-    }
+    final sortedFoodList = sortedFoods.map((entry) => {
+      'food': entry.key,
+      'votes': entry.value,
+    }).toList();
 
-    setState(() {
-      if (filtered.length <= stage) {
-        currentSelection = filtered.map((entry) => entry.key).toList();
-      } else {
-        currentSelection = filtered.take(stage).map((entry) => entry.key).toList();
-      }
-
-      stage = stage == 5 ? 3 : 1; // 단계 감소
-      resetVotes();
+    // Firestore에 저장
+    await _firestore
+        .collection('games')
+        .doc(widget.gameId)
+        .collection('foods')
+        .doc('nextFoods') // 'nextFoods' 문서에 저장
+        .set({
+      'food': sortedFoodList,
     });
-  }
-
-  // 투표 결과 팝업 표시
-  void showResultsPopup() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('투표 결과'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: votes.entries
-                .where((entry) => entry.value > 0) // 0표 제외
-                .map((entry) => Text('${entry.key}: ${entry.value}표'))
-                .toList(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // 최종 결과 표시
-  void showFinalResult(String winner) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('최종 선택'),
-          content: Text('최종 선택된 음식은 "$winner"입니다!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // 닫기
-                Navigator.pop(context); // 결과 페이지 닫기
-              },
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final myUid = Provider.of<UserProvider>(context, listen: false).uid;
+    final myUid = Provider.of<UserProvider>(context, listen: false).uid!;
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (currentSelection.isEmpty) {
+      return const Center(child: Text('음식 데이터가 없습니다.'));
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(stage == 5
-            ? 'Top 5 투표'
-            : stage == 3
-            ? 'Top 3 투표'
-            : '최종 선택'),
+        title: const Text('투표해주세요'), // 제목 변경
       ),
       body: Column(
         children: [
@@ -210,18 +172,22 @@ class _ResultPageState extends State<ResultPage> {
               itemCount: currentSelection.length,
               itemBuilder: (context, index) {
                 final food = currentSelection[index];
+
+                // votes에서 값이 없을 경우 기본값으로 0을 반환
+                final voteValue = votes[food] ?? 0;
+
                 return ListTile(
                   title: Text(food),
                   trailing: IconButton(
                     icon: Icon(
-                      votes[food] == 0
+                      voteValue == 0
                           ? Icons.circle_outlined
                           : Icons.check_circle,
-                      color: votes[food]! > 0 ? Colors.green : Colors.red,
+                      color: voteValue > 0 ? Colors.green : Colors.red,
                     ),
                     onPressed: () {
                       setState(() {
-                        if (votes[food] == 0) {
+                        if (voteValue == 0) {
                           votes[food] = 1; // 투표
                         } else {
                           votes[food] = 0; // 취소
