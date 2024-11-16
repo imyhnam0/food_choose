@@ -106,7 +106,7 @@ class _NextstagePageState extends State<NextstagePage> {
     // 모든 참가자가 준비 상태인지 확인
     if (readyStatus.values.every((status) => status == true)) {
       await _firestore.collection('games').doc(widget.gameId).update({
-        'resultfood': 'Done',
+        'nextStage': 'Done',
         'readyStatus': readyStatus.map((key, value) => MapEntry(key, false)), // 상태 초기화
       });
     }

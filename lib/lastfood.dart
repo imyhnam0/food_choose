@@ -94,30 +94,35 @@ class _LastfoodPageState extends State<LastfoodPage> {
       appBar: AppBar(
         title: const Text('최종 결과'),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '투표를 제일 많이 받은 값은',
-            style: const TextStyle(fontSize: 20),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            topFood!, // Top 1 음식
-            style: const TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: Colors.red, // 빨간색으로 강조
+      body: Center(
+      child:Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center, // 수평 정렬
+          children: [
+            Text(
+              '투표를 제일 많이 받은 값은',
+              style: const TextStyle(fontSize: 20),
+              textAlign: TextAlign.center, // 텍스트 중앙 정렬
             ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              await leaveGame(myUid); // 참가자 나가기 함수 호출
-            },
-            child: const Text('확인'),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              topFood!, // Top 1 음식
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Colors.red, // 빨간색으로 강조
+              ),
+              textAlign: TextAlign.center, // 텍스트 중앙 정렬
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                await leaveGame(myUid); // 참가자 나가기 함수 호출
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        ),
       ),
     );
   }

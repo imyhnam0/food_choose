@@ -13,7 +13,6 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'foodchoose.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -40,6 +39,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -112,7 +112,8 @@ class _HomePageState extends State<HomePage> {
       if (snapshot.docs.isNotEmpty) {
         final gameDoc = snapshot.docs.first;
         gameId = gameDoc.id;
-        final participantUids = List<String>.from(gameDoc['participants'] ?? []);
+        final participantUids =
+            List<String>.from(gameDoc['participants'] ?? []);
         updateParticipantList(participantUids);
       } else {
         setState(() {
@@ -146,7 +147,8 @@ class _HomePageState extends State<HomePage> {
     try {
       // Firestore에서 현재 readyStatus를 가져오기
       final gameDoc = await _firestore.collection('games').doc(gameId).get();
-      final Map<String, dynamic> readyStatus = gameDoc.data()?['readyStatus'] ?? {};
+      final Map<String, dynamic> readyStatus =
+          gameDoc.data()?['readyStatus'] ?? {};
 
       // 현재 사용자의 상태를 반전시켜 업데이트
       readyStatus[Myuid!] = !isReady;
@@ -165,7 +167,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
   Future<void> startGame() async {
     if (gameId == null) return;
 
@@ -180,7 +181,8 @@ class _HomePageState extends State<HomePage> {
       });
 
       // 모든 참가자의 readyStatus를 false로 초기화
-      final updatedReadyStatus = readyStatus.map((key, value) => MapEntry(key, false));
+      final updatedReadyStatus =
+          readyStatus.map((key, value) => MapEntry(key, false));
       await _firestore.collection('games').doc(gameId).update({
         'readyStatus': updatedReadyStatus,
       });
@@ -195,15 +197,14 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
-
   // 초대 요청 수락
   Future<void> acceptInvite(Map<String, dynamic> invite) async {
     final senderName = invite['senderName'];
     final senderUid = invite['senderUid'];
 
     // Firestore에서 현재 사용자 이름 가져오기
-    final currentUserDoc = await _firestore.collection('users').doc(Myuid).get();
+    final currentUserDoc =
+        await _firestore.collection('users').doc(Myuid).get();
     final currentUserName = currentUserDoc['name'];
 
     // 초대 요청 제거
@@ -242,9 +243,9 @@ class _HomePageState extends State<HomePage> {
         ],
         'readyStatus': {}, // 초기화된 레디 상태
         'gameState': 'waiting', // 초기 상태는 대기 상태
-        'foodchoose' : 'waiting',
-        'resultfood' : 'waiting',
-        'nextStage' : 'waiting',
+        'foodchoose': 'waiting',
+        'resultfood': 'waiting',
+        'nextStage': 'waiting',
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
@@ -266,6 +267,7 @@ class _HomePageState extends State<HomePage> {
       SnackBar(content: Text('$senderName님의 초대를 거절했습니다.')),
     );
   }
+
   // 참가자 나가기
   Future<void> leaveGame(String uid) async {
     if (gameId == null) return;
@@ -274,7 +276,10 @@ class _HomePageState extends State<HomePage> {
     await _firestore.collection('games').doc(gameId).update({
       'participants': FieldValue.arrayRemove([uid]),
       'participantDetails': FieldValue.arrayRemove([
-        {'uid': uid, 'name': participants.firstWhere((p) => p['uid'] == uid)['name']}
+        {
+          'uid': uid,
+          'name': participants.firstWhere((p) => p['uid'] == uid)['name']
+        }
       ]),
     });
 
@@ -318,157 +323,326 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('투표 선정'),
+        title: const Text(
+          '투표 선정',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [
+              Shadow(
+                blurRadius: 5.0,
+                color: Colors.black45,
+                offset: Offset(2, 2),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.deepPurple,
       ),
-      body: gameId == null
-          ? StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('users').doc(Myuid).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.indigo],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: gameId == null
+            ? StreamBuilder<DocumentSnapshot>(
+                stream: _firestore.collection('users').doc(Myuid).snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-          // 사용자 데이터 가져오기
-          final userData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final gameRequests = userData['gameRequests'] ?? [];
+                  // 사용자 데이터 가져오기
+                  final userData =
+                      snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                  final gameRequests = userData['gameRequests'] ?? [];
 
-          // 초대 요청이 있을 때 팝업 표시
-          if (gameRequests.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              showInviteDialog(gameRequests.last);
-            });
-          }
+                  // 초대 요청이 있을 때 팝업 표시
+                  if (gameRequests.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      showInviteDialog(gameRequests.last);
+                    });
+                  }
 
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  '현재 게임에 참가하지 않았습니다.',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const InvitePage()),
-                    );
-                  },
-                  child: const Text('친구 목록 보기'),
-                ),
-              ],
-            ),
-          );
-        },
-      )
-          : StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('games').doc(gameId).snapshots(),
-        builder: (context, gameSnapshot) {
-          if (!gameSnapshot.hasData || gameSnapshot.data == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          // 게임 데이터 가져오기
-          final gameData = gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final readyStatus = gameData['readyStatus'] ?? {};
-          final allReady = participants.every((participant) =>
-          readyStatus[participant['uid']] == true);
-          final gameState = gameData['gameState'] ?? 'waiting';
-          // 게임이 시작되었는지 확인
-          if (gameState == 'started') {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => FoodChoosePage(gameId: gameId!)),
-              );
-            });
-          }
-
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  '현재 방 참가자',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  width: 300,
-                  height: 200,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.blueGrey),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: participants.isEmpty
-                      ? const Center(child: Text('현재 참가자가 없습니다.'))
-                      : ListView.builder(
-                    itemCount: participants.length,
-                    itemBuilder: (context, index) {
-                      final participant = participants[index];
-                      final isParticipantReady =
-                          readyStatus[participant['uid']] ?? false;
-
-                      return ListTile(
-                        title: Text(participant['name']!),
-                        trailing: isParticipantReady
-                            ? const Icon(Icons.check, color: Colors.green)
-                            : const Icon(Icons.close, color: Colors.red),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
+                  return Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ElevatedButton(
-                          onPressed: toggleReadyStatus,
-                          child: Text(isReady ? '준비 취소' : '준비하기'),
+                        const Text(
+                          '현재 게임에 참가하지 않았습니다.',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 4.0,
+                                color: Colors.black54,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(height: 20),
                         ElevatedButton(
-                          onPressed: allReady ? startGame : null,
-                          child: const Text('시작하기'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () async {
-                            await leaveGame(Myuid!);
-                          },
-                          child: const Text('나가기'),
-                        ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 15),
+                            backgroundColor: Colors.lightBlueAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 8,
+                            shadowColor: Colors.blueAccent,
+                          ),
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const InvitePage()),
+                              MaterialPageRoute(
+                                  builder: (context) => const InvitePage()),
                             );
                           },
-                          child: const Text('친구목록'),
+                          child: const Text(
+                            '친구 목록 보기',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
-                  ],
-                )
-              ],
-            ),
-          );
-        },
+                  );
+                },
+              )
+            : StreamBuilder<DocumentSnapshot>(
+                stream: _firestore.collection('games').doc(gameId).snapshots(),
+                builder: (context, gameSnapshot) {
+                  if (!gameSnapshot.hasData || gameSnapshot.data == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // 게임 데이터 가져오기
+                  final gameData =
+                      gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+                  final readyStatus = gameData['readyStatus'] ?? {};
+                  final allReady = participants.every(
+                      (participant) => readyStatus[participant['uid']] == true);
+                  final gameState = gameData['gameState'] ?? 'waiting';
+                  // 게임이 시작되었는지 확인
+                  if (gameState == 'started') {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                FoodChoosePage(gameId: gameId!)),
+                      );
+                    });
+                  }
+
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          '현재 방 참가자',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purpleAccent,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 10.0,
+                                color: Colors.black38,
+                                offset: Offset(3, 3),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          width: 300,
+                          height: 200,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.deepPurple, Colors.indigoAccent],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                spreadRadius: 5,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: participants.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    '현재 참가자가 없습니다.',
+                                    style: TextStyle(
+                                        fontSize: 18, color: Colors.white70),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: participants.length,
+                                  itemBuilder: (context, index) {
+                                    final participant = participants[index];
+                                    final isParticipantReady =
+                                        readyStatus[participant['uid']] ??
+                                            false;
+
+                                    return Container(
+                                      margin: const EdgeInsets.symmetric(
+                                          vertical: 5),
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.8),
+                                        borderRadius: BorderRadius.circular(10),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 5,
+                                            offset: const Offset(2, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            participant['name']!,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Icon(
+                                            isParticipantReady
+                                                ? Icons.check_circle
+                                                : Icons.cancel,
+                                            color: isParticipantReady
+                                                ? Colors.green
+                                                : Colors.red,
+                                            size: 24,
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                        const SizedBox(height: 30),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 40, vertical: 15),
+                                backgroundColor: Colors.greenAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.green,
+                              ),
+                              onPressed: toggleReadyStatus,
+                              child: Text(
+                                isReady ? '준비 취소' : '준비하기',
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 40, vertical: 15),
+                                backgroundColor: Colors.orangeAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.orange,
+                              ),
+                              onPressed: allReady ? startGame : null,
+                              child: const Text(
+                                '게임 시작',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 30, vertical: 15),
+                                backgroundColor: Colors.redAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.red,
+                              ),
+                              onPressed: () async {
+                                await leaveGame(Myuid!);
+                              },
+                              child: const Text(
+                                '나가기',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 15),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 30, vertical: 15),
+                                backgroundColor: Colors.lightBlueAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.blue,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const InvitePage()),
+                                );
+                              },
+                              child: const Text(
+                                '친구 목록',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }
 }
-
-
