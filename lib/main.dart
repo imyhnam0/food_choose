@@ -242,6 +242,9 @@ class _HomePageState extends State<HomePage> {
         ],
         'readyStatus': {}, // 초기화된 레디 상태
         'gameState': 'waiting', // 초기 상태는 대기 상태
+        'foodchoose' : 'waiting',
+        'resultfood' : 'waiting',
+        'nextStage' : 'waiting',
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
@@ -315,7 +318,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('음식 선정'),
+        title: const Text('투표 선정'),
       ),
       body: gameId == null
           ? StreamBuilder<DocumentSnapshot>(
