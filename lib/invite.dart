@@ -25,13 +25,27 @@ class _InvitePageState extends State<InvitePage> {
   // 친구 삭제 함수
   Future<void> removeFriend(Map<String, String> friend) async {
     try {
-      // Firestore에서 현재 사용자 문서 업데이트
+      final friendUid = friend['uid']!;
+      final friendName = friend['name']!;
+
+      // 현재 사용자 이름 가져오기
+      final myDoc = await _firestore.collection('users').doc(Myuid).get();
+      final myName = myDoc['name'] as String;
+
+      // 현재 사용자 문서에서 친구 제거
       await _firestore.collection('users').doc(Myuid).update({
-        'friends': FieldValue.arrayRemove([friend]), // 친구 삭제
+        'friends': FieldValue.arrayRemove([friend]), // 내 친구 목록에서 친구 삭제
+      });
+
+      // 상대방 문서에서 현재 사용자 삭제
+      await _firestore.collection('users').doc(friendUid).update({
+        'friends': FieldValue.arrayRemove([
+          {'uid': Myuid, 'name': myName}, // 상대방의 친구 목록에서 내 정보 삭제
+        ]),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${friend['name']}님을 친구 목록에서 삭제했습니다.')),
+        SnackBar(content: Text('$friendName님을 친구 목록에서 삭제했습니다.')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -39,6 +53,7 @@ class _InvitePageState extends State<InvitePage> {
       );
     }
   }
+
 
   // 게임 참가 요청
   Future<void> sendGameRequest(String friendUid, String friendName) async {
@@ -146,7 +161,7 @@ class _InvitePageState extends State<InvitePage> {
       appBar: AppBar(
         title: const Text(
           '친구 목록',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24,color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: Colors.deepPurpleAccent,
@@ -216,16 +231,16 @@ class _InvitePageState extends State<InvitePage> {
                     itemBuilder: (context, index) {
                       final friend = friends[index];
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black26,
-                              blurRadius: 5,
-                              offset: const Offset(3, 3),
+                              blurRadius: 8,
+                              offset: const Offset(2, 2),
                             ),
                           ],
                         ),
@@ -237,26 +252,58 @@ class _InvitePageState extends State<InvitePage> {
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.black, // 텍스트 색상 조정
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 3,
+                                    color: Colors.black38,
+                                    offset: Offset(1, 1),
+                                  ),
+                                ],
                               ),
                             ),
                             Row(
                               children: [
-                                IconButton(
-                                  icon: const Icon(Icons.add,
-                                      color: Colors.green),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 10),
+                                    backgroundColor: Colors.greenAccent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 5,
+                                  ),
                                   onPressed: () {
                                     sendGameRequest(
                                         friend['uid']!, friend['name']!);
                                   },
+                                  child: const Text(
+                                    '초대',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.red),
+                                const SizedBox(width: 10),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 10),
+                                    backgroundColor: Colors.redAccent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 5,
+                                  ),
                                   onPressed: () async {
                                     await removeFriend(friend);
                                   },
+                                  child: const Text(
+                                    '삭제',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
                                 ),
                               ],
+
                             ),
                           ],
                         ),
@@ -281,11 +328,46 @@ class _InvitePageState extends State<InvitePage> {
                         context: context,
                         builder: (context) {
                           return AlertDialog(
-                            title: const Text('친구 추가'),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            backgroundColor: Colors.deepPurpleAccent.withOpacity(0.9),
+                            title: const Text(
+                              '친구 추가',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 5.0,
+                                    color: Colors.black45,
+                                    offset: Offset(2, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
                             content: TextField(
                               controller: _friendEmailController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: '친구의 이메일을 입력하세요',
+                                hintStyle: const TextStyle(
+                                  color: Colors.white70,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.2),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Colors.white70),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Colors.white),
+                                ),
+                              ),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
                               ),
                             ),
                             actions: [
@@ -293,21 +375,43 @@ class _InvitePageState extends State<InvitePage> {
                                 onPressed: () {
                                   Navigator.pop(context);
                                 },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.redAccent,
+                                  textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 child: const Text('취소'),
                               ),
                               ElevatedButton(
                                 onPressed: () async {
-                                  final friendEmail =
-                                      _friendEmailController.text.trim();
+                                  final friendEmail = _friendEmailController.text.trim();
                                   if (friendEmail.isNotEmpty) {
                                     await sendFriendRequest(friendEmail);
                                     Navigator.pop(context);
                                   }
                                 },
-                                child: const Text('요청 보내기'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.indigoAccent,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 5,
+                                ),
+                                child: const Text(
+                                  '요청 보내기',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ],
                           );
+
                         },
                       );
                     },

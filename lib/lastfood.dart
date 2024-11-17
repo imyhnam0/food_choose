@@ -103,7 +103,8 @@ class _LastfoodPageState extends State<LastfoodPage> {
       appBar: AppBar(
         title: const Text(
           '최종 결과',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+
         ),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,

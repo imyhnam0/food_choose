@@ -130,7 +130,7 @@ class _NextstagePageState extends State<NextstagePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Top 3 투표'),
+        title: const Text('Top 3 모음', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.deepPurple,
         elevation: 10,
         centerTitle: true,
@@ -172,7 +172,7 @@ class _NextstagePageState extends State<NextstagePage> {
                   const Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Text(
-                      '다음 단계로 투표할 상위 3개의 음식을 선택하세요!',
+                      '최종 투표!',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

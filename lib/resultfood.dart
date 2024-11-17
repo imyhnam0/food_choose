@@ -291,25 +291,27 @@ class _ResultPageState extends State<ResultPage> {
                   ),
                 ],
                 if (isSubmitted)
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text(
-                      '다른 참가자들이 완료할 때까지 기다려주세요.',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            blurRadius: 3.0,
-                            color: Colors.black54,
-                            offset: Offset(1, 1),
-                          ),
-                        ],
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text(
+                        '다른 참가자들이 완료할 때까지 기다려주세요.',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 3.0,
+                              color: Colors.black54,
+                              offset: Offset(1, 1),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
+                  )
               ],
             );
           },

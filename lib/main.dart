@@ -12,6 +12,8 @@ import 'user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'foodchoose.dart';
+import 'invitemessage.dart';
+import 'loginpage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +37,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+      home: SplashScreen(),
     );
   }
 }
@@ -296,14 +298,50 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('게임 초대'),
-          content: Text('$senderName님이 게임에 초대했습니다.'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          backgroundColor: Colors.deepPurpleAccent.withOpacity(0.9),
+          title: const Text(
+            '게임 초대',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              shadows: [
+                Shadow(
+                  blurRadius: 5.0,
+                  color: Colors.black45,
+                  offset: Offset(2, 2),
+                ),
+              ],
+            ),
+          ),
+          content: Text(
+            '$senderName님이 게임에 초대했습니다.',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.white70,
+              fontWeight: FontWeight.w400,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
             TextButton(
               onPressed: () {
                 rejectInvite(invite);
                 Navigator.pop(context); // 팝업 닫기
               },
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                foregroundColor: Colors.redAccent,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               child: const Text('거절'),
             ),
             ElevatedButton(
@@ -311,7 +349,23 @@ class _HomePageState extends State<HomePage> {
                 acceptInvite(invite);
                 Navigator.pop(context); // 팝업 닫기
               },
-              child: const Text('수락'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 5,
+              ),
+              child: const Text(
+                '수락',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         );
@@ -339,6 +393,30 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         backgroundColor: Colors.deepPurple,
+        leading: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.white, width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextButton(
+            onPressed: () async {
+              // 로그아웃 처리
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.remove('uid'); // SharedPreferences에서 UID 제거
+
+              // 로그인 페이지로 이동
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => LoginPage()),
+              );
+            },
+            child: const Text(
+              'logout',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -389,29 +467,60 @@ class _HomePageState extends State<HomePage> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 20),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 15),
-                            backgroundColor: Colors.lightBlueAccent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 40, vertical: 15),
+                                backgroundColor: Colors.lightBlueAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 8,
+                                shadowColor: Colors.blueAccent,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const InvitePage()),
+                                );
+                              },
+                              child: const Text(
+                                '친구 목록 보기',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
                             ),
-                            elevation: 8,
-                            shadowColor: Colors.blueAccent,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const InvitePage()),
-                            );
-                          },
-                          child: const Text(
-                            '친구 목록 보기',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
+                            const SizedBox(width: 15),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 30, vertical: 15),
+                                backgroundColor: Colors.purpleAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.purple,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const InviteMessagesPage()),
+                                );
+                              },
+                              child: const Text(
+                                '받은 초대 메시지',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

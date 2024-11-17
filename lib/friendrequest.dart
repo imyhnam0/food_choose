@@ -59,12 +59,19 @@ class FriendRequestsPage extends StatelessWidget {
           '친구 요청 목록',
           style: TextStyle(
             fontWeight: FontWeight.bold,
+            color: Colors.white,
             fontSize: 22,
           ),
         ),
         backgroundColor: Colors.deepPurpleAccent,
         elevation: 5,
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -121,6 +128,13 @@ class FriendRequestsPage extends StatelessWidget {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 3,
+                              color: Colors.black38,
+                              offset: Offset(1, 1),
+                            ),
+                          ],
                         ),
                       ),
                       Row(
