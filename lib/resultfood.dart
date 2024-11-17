@@ -132,7 +132,7 @@ class _ResultPageState extends State<ResultPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          '음식 투표',
+          '투표',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -180,7 +180,7 @@ class _ResultPageState extends State<ResultPage> {
                 const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text(
-                    '가장 마음에 드는 음식을 선택하세요!',
+                    '가장 마음에 드는 것을 선택하세요!',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
