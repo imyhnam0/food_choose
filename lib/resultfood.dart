@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_provider.dart';
 import 'package:provider/provider.dart';
 import 'nextStage.dart';
-import 'utils.dart';
 
 class ResultPage extends StatefulWidget {
   final String gameId;
@@ -21,14 +20,11 @@ class _ResultPageState extends State<ResultPage> {
   bool isLoading = true;
   bool isSubmitted = false;
 
-
-
   @override
   void initState() {
     super.initState();
     fetchFoods();
   }
-
 
   // 음식 데이터 가져오기
   Future<void> fetchFoods() async {
@@ -82,10 +78,12 @@ class _ResultPageState extends State<ResultPage> {
     final sortedFoods = aggregatedVotes.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final sortedFoodList = sortedFoods.map((entry) => {
-      'food': entry.key,
-      'votes': entry.value,
-    }).toList();
+    final sortedFoodList = sortedFoods
+        .map((entry) => {
+              'food': entry.key,
+              'votes': entry.value,
+            })
+        .toList();
 
     // Firestore에 저장
     try {
@@ -106,24 +104,23 @@ class _ResultPageState extends State<ResultPage> {
 
   // Firestore 업데이트 함수 분리
   Future<void> updateresultfoodStatus() async {
-    final gameDoc = await _firestore.collection('games').doc(widget.gameId).get();
+    final gameDoc =
+        await _firestore.collection('games').doc(widget.gameId).get();
     final readyStatus = gameDoc['readyStatus'] ?? {};
 
     // 모든 참가자가 준비 상태인지 확인
     if (readyStatus.values.every((status) => status == true)) {
       await _firestore.collection('games').doc(widget.gameId).update({
         'resultfood': 'Done',
-        'readyStatus': readyStatus.map((key, value) => MapEntry(key, false)), // 상태 초기화
+        'readyStatus': readyStatus.map((key, value) => MapEntry(key, false)),
+        // 상태 초기화
       });
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final myUid = Provider
-        .of<UserProvider>(context, listen: false)
-        .uid!;
+    final myUid = Provider.of<UserProvider>(context, listen: false).uid!;
     if (isLoading) {
       return const Scaffold(
         body: Center(
@@ -134,91 +131,189 @@ class _ResultPageState extends State<ResultPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('투표해주세요'),
+        title: const Text(
+          '음식 투표',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurpleAccent,
+        elevation: 10,
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('games').doc(widget.gameId).snapshots(),
-        builder: (context, gameSnapshot) {
-          if (!gameSnapshot.hasData) {
-            return const CircularProgressIndicator();
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.purpleAccent, Colors.blueAccent],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: _firestore.collection('games').doc(widget.gameId).snapshots(),
+          builder: (context, gameSnapshot) {
+            if (!gameSnapshot.hasData) {
+              return const CircularProgressIndicator();
+            }
 
-          final gameData = gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final resultfood = gameData['resultfood'] ?? 'waiting';
+            final gameData =
+                gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+            final resultfood = gameData['resultfood'] ?? 'waiting';
 
+            // `resultState`가 `done`으로 변경되었을 때 자동으로 넘어가기
 
-          // `resultState`가 `done`으로 변경되었을 때 자동으로 넘어가기
+            if (resultfood == "Done") {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          NextstagePage(gameId: widget.gameId)),
+                );
+              });
+            }
 
-          if (resultfood == "Done" ) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => NextstagePage(gameId: widget.gameId)),
-              );
-            });
-          }
-
-          return Column(
-            children: [
-              if (!isSubmitted) ...[
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: currentSelection.length,
-                    itemBuilder: (context, index) {
-                      final food = currentSelection[index];
-                      final voteValue = votes[food] ?? 0;
-
-                      return ListTile(
-                        title: Text(food),
-                        trailing: IconButton(
-                          icon: Icon(
-                            voteValue == 0
-                                ? Icons.circle_outlined
-                                : Icons.check_circle,
-                            color: voteValue > 0 ? Colors.green : Colors.red,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              if (voteValue == 0) {
-                                votes[food] = 1; // 투표
-                              } else {
-                                votes[food] = 0; // 취소
-                              }
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    await aggregateVotes({myUid: votes}); // 투표 결과 저장
-                    await _firestore.collection('games').doc(widget.gameId).update({
-                      'readyStatus.$myUid': true, // 내 상태를 true로 변경
-                    });
-
-                    // 모든 참가자 상태 확인 후 업데이트
-                    await updateresultfoodStatus();
-
-                    setState(() {
-                      isSubmitted = true; // 확인 버튼을 눌렀음을 표시
-                    });
-                  },
-                  child: const Text('확인'),
-                ),
-              ],
-              if (isSubmitted)
-                const Center(
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
                   child: Text(
-                    '다른 참가자들이 완료할 때까지 기다려주세요.',
-                    style: TextStyle(fontSize: 18),
+                    '가장 마음에 드는 음식을 선택하세요!',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 5.0,
+                          color: Colors.black54,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-            ],
-          );
-        },
+                if (!isSubmitted) ...[
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: currentSelection.length,
+                      itemBuilder: (context, index) {
+                        final food = currentSelection[index];
+                        final voteValue = votes[food] ?? 0;
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                                offset: const Offset(2, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                food,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  voteValue == 0
+                                      ? Icons.circle_outlined
+                                      : Icons.check_circle,
+                                  color:
+                                      voteValue > 0 ? Colors.green : Colors.red,
+                                  size: 28,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    votes[food] = voteValue == 0 ? 1 : 0;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await aggregateVotes({myUid: votes}); // 투표 결과 저장
+                        await _firestore
+                            .collection('games')
+                            .doc(widget.gameId)
+                            .update({
+                          'readyStatus.$myUid': true, // 내 상태를 true로 변경
+                        });
+
+                        // 모든 참가자 상태 확인 후 업데이트
+                        await updateresultfoodStatus();
+
+                        setState(() {
+                          isSubmitted = true; // 확인 버튼을 눌렀음을 표시
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurpleAccent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 10,
+                      ),
+                      child: const Text(
+                        '투표 완료',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (isSubmitted)
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      '다른 참가자들이 완료할 때까지 기다려주세요.',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 3.0,
+                            color: Colors.black54,
+                            offset: Offset(1, 1),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

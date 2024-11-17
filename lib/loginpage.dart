@@ -67,20 +67,26 @@ Future<void> _login() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Login',
-          style: TextStyle(
-            fontFamily: 'Pacifico',
-            fontSize: 28.0,
-            color: Colors.white,
-          ),
+        title: const Text(
+          '로그인',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blueGrey.shade900,
+        backgroundColor: Colors.deepPurple,
+        elevation: 5,
 
       ),
       body: Stack(
         children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.deepPurpleAccent, Colors.blueAccent],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
           Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(16.0),
@@ -89,70 +95,89 @@ Future<void> _login() async {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      '빨리 가입좀',
+                    const Text(
+                      '환영합니다!',
                       style: TextStyle(
                         fontFamily: 'Pacifico',
                         fontSize: 32.0,
                         color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 5.0,
+                            color: Colors.black54,
+                            offset: Offset(2, 2),
+                          ),
+                        ],
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 30),
                     TextFormField(
                       controller: _emailController,
                       decoration: InputDecoration(
-                        labelText: 'Email',
-                        labelStyle: TextStyle(color: Colors.blueGrey.shade700),
-                        border: OutlineInputBorder(),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blueGrey.shade700),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blueGrey.shade900),
-                        ),
+                        labelText: '이메일',
+                        labelStyle: TextStyle(color: Colors.black),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white70),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white),
+                        ),
                       ),
                       validator: _validateEmail,
                     ),
                     SizedBox(height: 20),
                     TextFormField(
                       controller: _passwordController,
+                      obscureText: true,
                       decoration: InputDecoration(
-                        labelText: 'Password',
-                        labelStyle: TextStyle(color: Colors.blueGrey.shade700),
-                        border: OutlineInputBorder(),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blueGrey.shade700),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blueGrey.shade900),
-                        ),
+                        labelText: '비밀번호',
+                        labelStyle: TextStyle(color: Colors.black),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white70),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white),
+                        ),
                       ),
-                      obscureText: true,
                       validator: _validatePassword,
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 30),
                     ElevatedButton(
                       onPressed: _login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueGrey.shade900,
-                        padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 60, vertical: 15),
+                        backgroundColor: Colors.lightBlueAccent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 8,
                       ),
-                      child: Text(
-                        'Login',
+                      child: const Text(
+                        '로그인',
                         style: TextStyle(
                           fontSize: 18,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          fontFamily: 'Oswald',
                         ),
                       ),
                     ),
+                    const SizedBox(height: 15),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -160,12 +185,12 @@ Future<void> _login() async {
                           MaterialPageRoute(builder: (context) => SignUpPage()),
                         );
                       },
-                      child: Text(
-                        'Sign Up',
+                      child: const Text(
+                        '회원가입',
                         style: TextStyle(
                           color: Colors.white,
-                          fontFamily: 'Oswald',
                           fontSize: 16,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),

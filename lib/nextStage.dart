@@ -28,7 +28,7 @@ class _NextstagePageState extends State<NextstagePage> {
   }
 
   // Firestore에서 'nextFoods' 문서의 데이터를 가져와 상위 3개의 food 값을 추출
-  Future<void>  fetchTopFoods() async {
+  Future<void> fetchTopFoods() async {
     try {
       final doc = await _firestore
           .collection('games')
@@ -44,7 +44,8 @@ class _NextstagePageState extends State<NextstagePage> {
         setState(() {
           topFoods = foodList
               .take(3) // 상위 3개의 항목만 가져옴
-              .map((item) => (item as Map<String, dynamic>)['food'] as String) // 각 항목에서 food 값 추출
+              .map((item) => (item as Map<String, dynamic>)['food']
+                  as String) // 각 항목에서 food 값 추출
               .toList();
         });
 
@@ -76,10 +77,12 @@ class _NextstagePageState extends State<NextstagePage> {
     final sortedFoods = aggregatedVotes.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final sortedFoodList = sortedFoods.map((entry) => {
-      'food': entry.key,
-      'votes': entry.value,
-    }).toList();
+    final sortedFoodList = sortedFoods
+        .map((entry) => {
+              'food': entry.key,
+              'votes': entry.value,
+            })
+        .toList();
 
     // Firestore에 저장
     try {
@@ -100,14 +103,16 @@ class _NextstagePageState extends State<NextstagePage> {
 
   // Firestore 업데이트 함수 분리
   Future<void> updatenextStageStatus() async {
-    final gameDoc = await _firestore.collection('games').doc(widget.gameId).get();
+    final gameDoc =
+        await _firestore.collection('games').doc(widget.gameId).get();
     final readyStatus = gameDoc['readyStatus'] ?? {};
 
     // 모든 참가자가 준비 상태인지 확인
     if (readyStatus.values.every((status) => status == true)) {
       await _firestore.collection('games').doc(widget.gameId).update({
         'nextStage': 'Done',
-        'readyStatus': readyStatus.map((key, value) => MapEntry(key, false)), // 상태 초기화
+        'readyStatus': readyStatus.map((key, value) => MapEntry(key, false)),
+        // 상태 초기화
       });
     }
   }
@@ -118,7 +123,7 @@ class _NextstagePageState extends State<NextstagePage> {
     if (isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(), // 로딩 중 표시
+          child: CircularProgressIndicator(),
         ),
       );
     }
@@ -126,90 +131,180 @@ class _NextstagePageState extends State<NextstagePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Top 3 투표'),
+        backgroundColor: Colors.deepPurple,
+        elevation: 10,
+        centerTitle: true,
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('games').doc(widget.gameId).snapshots(),
-        builder: (context, gameSnapshot) {
-          if (!gameSnapshot.hasData) {
-            return const CircularProgressIndicator();
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.deepPurpleAccent, Colors.blueAccent],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: _firestore.collection('games').doc(widget.gameId).snapshots(),
+          builder: (context, gameSnapshot) {
+            if (!gameSnapshot.hasData) {
+              return const CircularProgressIndicator();
+            }
 
-          final gameData = gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final nextStage = gameData['nextStage'] ?? 'waiting';
+            final gameData =
+                gameSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+            final nextStage = gameData['nextStage'] ?? 'waiting';
 
+            // `State`가 `done`으로 변경되었을 때 자동으로 넘어가기
+            if (nextStage == "Done") {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          LastfoodPage(gameId: widget.gameId)),
+                );
+              });
+            }
 
-          // `State`가 `done`으로 변경되었을 때 자동으로 넘어가기
-          if (nextStage == "Done" ) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => LastfoodPage(gameId: widget.gameId)),
-              );
-            });
-          }
-
-
-          return Column(
-            children: [
-              if (!isSubmitted) ...[
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: topFoods.length,
-                    itemBuilder: (context, index) {
-                      final food = topFoods[index];
-                      final votesCount = votes[food] ?? 0;
-
-                      return ListTile(
-                        title: Text(food),
-                        trailing: IconButton(
-                          icon: Icon(
-                            votesCount == 0
-                                ? Icons.circle_outlined
-                                : Icons.check_circle,
-                            color: votesCount > 0 ? Colors.green : Colors.red,
+            return Column(
+              children: [
+                if (!isSubmitted) ...[
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      '다음 단계로 투표할 상위 3개의 음식을 선택하세요!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 5.0,
+                            color: Colors.black54,
+                            offset: Offset(2, 2),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              if (votesCount == 0) {
-                                votes[food] = 1;
-                              } else {
-                                votes[food] = 0;
-                              }
-                            });
-                          },
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: topFoods.length,
+                      itemBuilder: (context, index) {
+                        final food = topFoods[index];
+                        final votesCount = votes[food] ?? 0;
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                food,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  votesCount == 0
+                                      ? Icons.circle_outlined
+                                      : Icons.check_circle,
+                                  color: votesCount > 0
+                                      ? Colors.green
+                                      : Colors.red,
+                                  size: 28,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    if (votesCount == 0) {
+                                      votes[food] = 1;
+                                    } else {
+                                      votes[food] = 0;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await aggregateVotes({myUid: votes});
+                        await _firestore
+                            .collection('games')
+                            .doc(widget.gameId)
+                            .update({
+                          'readyStatus.$myUid': true,
+                        });
+                        await updatenextStageStatus();
+                        setState(() {
+                          isSubmitted = true;
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.greenAccent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    },
+                      ),
+                      child: const Text(
+                        '투표 완료',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    await aggregateVotes({myUid: votes}); // 투표 결과 저장
-                    await _firestore.collection('games').doc(widget.gameId).update({
-                      'readyStatus.$myUid': true, // 내 상태를 true로 변경
-                    });
-
-                    // 모든 참가자 상태 확인 후 업데이트
-                    await updatenextStageStatus();
-
-                    setState(() {
-                      isSubmitted = true;
-                    });
-                  },
-                  child: const Text('확인'),
-                ),
+                ],
+                if (isSubmitted)
+                  const Center(
+                    child: Text(
+                      '다른 참가자들이 완료할 때까지 기다려주세요.',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 3.0,
+                            color: Colors.black54,
+                            offset: Offset(1, 1),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
               ],
-              if (isSubmitted)
-                const Center(
-                  child: Text(
-                    '다른 참가자들이 완료할 때까지 기다려주세요.',
-                    style: TextStyle(fontSize: 18),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

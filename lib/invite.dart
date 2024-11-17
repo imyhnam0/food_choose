@@ -21,6 +21,7 @@ class _InvitePageState extends State<InvitePage> {
     super.initState();
     Myuid = Provider.of<UserProvider>(context, listen: false).uid;
   }
+
   // 친구 삭제 함수
   Future<void> removeFriend(Map<String, String> friend) async {
     try {
@@ -38,13 +39,14 @@ class _InvitePageState extends State<InvitePage> {
       );
     }
   }
+
   // 게임 참가 요청
   Future<void> sendGameRequest(String friendUid, String friendName) async {
     try {
       // 내 정보 가져오기
       final myDoc = await _firestore.collection('users').doc(Myuid).get();
       final myName = myDoc['name']; // 내 이름
-      final myUid = myDoc['uid'];  // 내 UID
+      final myUid = myDoc['uid']; // 내 UID
 
       // 초대 요청 추가
       await _firestore.collection('users').doc(friendUid).update({
@@ -67,9 +69,6 @@ class _InvitePageState extends State<InvitePage> {
     }
   }
 
-
-
-
   // 친구 추가 요청 함수
   Future<void> sendFriendRequest(String friendEmail) async {
     try {
@@ -88,26 +87,26 @@ class _InvitePageState extends State<InvitePage> {
         final myDoc = await _firestore.collection('users').doc(Myuid).get();
         final myName = myDoc['name']; // 내 이름 가져오기
 
-
         // 친구 요청 및 친구 목록 확인
         final friendRequests = friendDoc['friendRequests'] != null &&
-            friendDoc['friendRequests'] is List
+                friendDoc['friendRequests'] is List
             ? (friendDoc['friendRequests'] as List)
-            .map((request) => Map<String, String>.from(request as Map<String, dynamic>))
-            .toList()
+                .map((request) =>
+                    Map<String, String>.from(request as Map<String, dynamic>))
+                .toList()
             : [];
 
-
-        final friendList = friendDoc['friends'] != null && friendDoc['friends'] is List
+        final friendList = friendDoc['friends'] != null &&
+                friendDoc['friends'] is List
             ? (friendDoc['friends'] as List)
-            .map((friend) => Map<String, String>.from(friend as Map<String, dynamic>))
-            .toList()
+                .map((friend) =>
+                    Map<String, String>.from(friend as Map<String, dynamic>))
+                .toList()
             : [];
-
-
 
         // 중복 확인: 친구 요청 목록에 존재하는지
-        final alreadyRequested = friendRequests.any((request) => request['uid'] == Myuid);
+        final alreadyRequested =
+            friendRequests.any((request) => request['uid'] == Myuid);
 
         // 중복 확인: 친구 목록에 존재하는지
         final alreadyFriend = friendList.contains(Myuid);
@@ -141,121 +140,188 @@ class _InvitePageState extends State<InvitePage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('친구 목록'),
+        title: const Text(
+          '친구 목록',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurpleAccent,
+        elevation: 10,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FriendRequestsPage(userId: Myuid!),
-                ),
-              );
-            },
-            child: const Text(
-              '요청 목록',
-              style: TextStyle(color: Colors.black),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white, width: 2),
+              borderRadius: BorderRadius.circular(8),
             ),
-          ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FriendRequestsPage(userId: Myuid!),
+                  ),
+                );
+              },
+              child: const Text(
+                '요청 목록',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          )
         ],
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('users').doc(Myuid).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.indigoAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: _firestore.collection('users').doc(Myuid).snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
 
-          // friends 필드를 가져오기
-          // 친구 목록 처리
-          List<Map<String, String>> friends = [];
-          if (snapshot.data!['friends'] != null && snapshot.data!['friends'] is List) {
-            friends = (snapshot.data!['friends'] as List)
-                .map((friend) => Map<String, String>.from(friend as Map<String, dynamic>))
-                .toList();
-          }
+            // friends 필드를 가져오기
+            // 친구 목록 처리
+            List<Map<String, String>> friends = [];
+            if (snapshot.data!['friends'] != null &&
+                snapshot.data!['friends'] is List) {
+              friends = (snapshot.data!['friends'] as List)
+                  .map((friend) =>
+                      Map<String, String>.from(friend as Map<String, dynamic>))
+                  .toList();
+            }
 
-
-
-
-
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: friends.length,
-                  itemBuilder: (context, index) {
-                    final friend = friends[index];
-                    final friendName = friend['name']!;
-
-                    return ListTile(
-                      title: Text(friendName), // 친구 이름 표시
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.add, color: Colors.green),
-                            onPressed: () {
-                              sendGameRequest(friend['uid']!, friend['name']!);
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              await removeFriend(friend); // 친구 삭제
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('친구 추가'),
-                        content: TextField(
-                          controller: _friendEmailController,
-                          decoration: const InputDecoration(
-                            hintText: '친구의 이메일을 입력하세요',
-                          ),
+            return Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: friends.length,
+                    itemBuilder: (context, index) {
+                      final friend = friends[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 5,
+                              offset: const Offset(3, 3),
+                            ),
+                          ],
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text('취소'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final friendEmail = _friendEmailController.text.trim();
-                              if (friendEmail.isNotEmpty) {
-                                await sendFriendRequest(friendEmail);
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: const Text('요청 보내기'),
-                          ),
-                        ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              friend['name']!,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.add,
+                                      color: Colors.green),
+                                  onPressed: () {
+                                    sendGameRequest(
+                                        friend['uid']!, friend['name']!);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  onPressed: () async {
+                                    await removeFriend(friend);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       );
                     },
-                  );
-                },
-                child: const Text('친구 추가'),
-              ),
-            ],
-          );
-        },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orangeAccent,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 15, horizontal: 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 10,
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('친구 추가'),
+                            content: TextField(
+                              controller: _friendEmailController,
+                              decoration: const InputDecoration(
+                                hintText: '친구의 이메일을 입력하세요',
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('취소'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final friendEmail =
+                                      _friendEmailController.text.trim();
+                                  if (friendEmail.isNotEmpty) {
+                                    await sendFriendRequest(friendEmail);
+                                    Navigator.pop(context);
+                                  }
+                                },
+                                child: const Text('요청 보내기'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child: const Text(
+                      '친구 추가',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
