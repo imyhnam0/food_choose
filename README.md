@@ -1,16 +1,14 @@
-# foodchoose
+# yunvote App
 
-A new Flutter project.
+It's an app that allows you to vote
 
-## Getting Started
+The question about yunvote is Feel free to contact me:
 
-This project is a starting point for a Flutter application.
+# Support Information
 
-A few resources to get you started if this is your first Flutter project:
+If you have questions or need assistance with the app, please contact us:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **Email**: [123imyhnam123@gmail.com](mailto:123imyhnam123@gmail.com)
+- **Phone**: +82-10-5955-975
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+
