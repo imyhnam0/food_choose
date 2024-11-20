@@ -56,7 +56,7 @@ class _InvitePageState extends State<InvitePage> {
 
 
   // 게임 참가 요청
-  Future<void> sendGameRequest(String friendUid, String friendName) async {
+  Future<void> sendGameRequest(String friendUid, String friendName, String gameName) async {
     try {
       // 내 정보 가져오기
       final myDoc = await _firestore.collection('users').doc(Myuid).get();
@@ -70,6 +70,7 @@ class _InvitePageState extends State<InvitePage> {
             'senderUid': myUid, // 내 UID
             'senderName': myName, // 내 이름
             'status': 'pending',
+            'whatgame': gameName,
           }
         ]),
       });
@@ -154,6 +155,74 @@ class _InvitePageState extends State<InvitePage> {
       );
     }
   }
+
+  void showInvitePopup(BuildContext context, String friendUid, String friendName) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            '초대 유형 선택',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  backgroundColor: Colors.blueAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  sendGameRequest(friendUid, friendName, "투표 초대");
+                  Navigator.pop(context); // 팝업 닫기
+
+                },
+                child: const Text(
+                  '투표 초대',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  backgroundColor: Colors.orangeAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  sendGameRequest(friendUid, friendName, "미팅 정하기 초대");
+                  Navigator.pop(context); // 팝업 닫기
+
+                },
+                child: const Text(
+                  '미텅 정하기 초대',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // 팝업 닫기
+              },
+              child: const Text(
+                '취소',
+                style: TextStyle(color: Colors.red, fontSize: 14),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -275,8 +344,7 @@ class _InvitePageState extends State<InvitePage> {
                                     elevation: 5,
                                   ),
                                   onPressed: () {
-                                    sendGameRequest(
-                                        friend['uid']!, friend['name']!);
+                                    showInvitePopup(context, friend['uid']!, friend['name']!);
                                   },
                                   child: const Text(
                                     '초대',

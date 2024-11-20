@@ -206,6 +206,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> acceptInvite(Map<String, dynamic> invite) async {
     final senderName = invite['senderName'];
     final senderUid = invite['senderUid'];
+    final whatGame = invite['whatgame'];
 
     // Firestore에서 현재 사용자 이름 가져오기
     final currentUserDoc =
@@ -217,9 +218,12 @@ class _HomePageState extends State<HomePage> {
       'gameRequests': FieldValue.arrayRemove([invite]),
     });
 
+    // 컬렉션 선택: 투표 초대 -> games, 미팅 정하기 -> meetingRooms
+    final targetCollection = whatGame == '투표 초대' ? 'games' : 'meetingRooms';
+
     // 기존 방 검색
     final existingGameQuery = await _firestore
-        .collection('games')
+        .collection(targetCollection)
         .where('participants', arrayContains: senderUid)
         .get();
 
@@ -230,7 +234,7 @@ class _HomePageState extends State<HomePage> {
       final gameDoc = existingGameQuery.docs.first;
       gameId = gameDoc.id;
 
-      await _firestore.collection('games').doc(gameId).update({
+      await _firestore.collection(targetCollection).doc(gameId).update({
         'participants': FieldValue.arrayUnion([Myuid]),
         'participantDetails': FieldValue.arrayUnion([
           {'uid': Myuid, 'name': currentUserName}
@@ -240,7 +244,7 @@ class _HomePageState extends State<HomePage> {
       // 기존 방이 없으면 새 방 생성
       gameId = DateTime.now().millisecondsSinceEpoch.toString();
 
-      await _firestore.collection('games').doc(gameId).set({
+      await _firestore.collection(targetCollection).doc(gameId).set({
         'participants': [senderUid, Myuid], // 초대한 사람과 현재 사용자 추가
         'participantDetails': [
           {'uid': senderUid, 'name': senderName},
@@ -296,6 +300,7 @@ class _HomePageState extends State<HomePage> {
   // 초대 요청 팝업
   void showInviteDialog(Map<String, dynamic> invite) {
     final senderName = invite['senderName']; // 초대한 사람의 이름 가져오기
+    final whatgame = invite['whatgame']; // 초대한 사람의 게임 이름 가져오기
 
     showDialog(
       context: context,
@@ -305,8 +310,8 @@ class _HomePageState extends State<HomePage> {
             borderRadius: BorderRadius.circular(15),
           ),
           backgroundColor: Colors.deepPurpleAccent.withOpacity(0.9),
-          title: const Text(
-            '게임 초대',
+          title: Text(
+            whatgame,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -321,7 +326,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           content: Text(
-            '$senderName님이 게임에 초대했습니다.',
+            '$senderName님이 초대했습니다.',
             style: TextStyle(
               fontSize: 18,
               color: Colors.white70,
