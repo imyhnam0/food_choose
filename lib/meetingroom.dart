@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
 
-class MeetingRoomPage extends StatefulWidget {
-  const MeetingRoomPage({Key? key}) : super(key: key);
+class AvailabilityPage extends StatefulWidget {
+  const AvailabilityPage({Key? key}) : super(key: key);
 
   @override
-  State<MeetingRoomPage> createState() => _MeetingRoomPageState();
+  State<AvailabilityPage> createState() => _AvailabilityPageState();
 }
 
-class _MeetingRoomPageState extends State<MeetingRoomPage> {
-  String startAmPm = "AM";
-  String endAmPm = "AM";
-  int? startHour;
-  int? endHour;
+class _AvailabilityPageState extends State<AvailabilityPage> {
+  final List<String> days = ["월", "화", "수", "목", "금", "토", "일"];
+  final Map<String, bool?> availability = {};
+  final Map<String, String> startTimes = {};
+  final Map<String, String> endTimes = {};
+  final Map<String, bool> selectedDays = {};
 
-  void showTimePickerDialog(String type) {
-    String tempAmPm = type == "시작" ? startAmPm : endAmPm;
-    int? tempHour = type == "시작" ? startHour : endHour;
+  @override
+  void initState() {
+    super.initState();
+    for (String day in days) {
+      availability[day] = null; // 초기 상태
+      selectedDays[day] = false; // 요일 선택 초기화
+    }
+  }
+
+  void showTimePickerDialog(String day, String type) {
+    String tempAmPm = "AM";
+    int? tempHour;
 
     showDialog(
       context: context,
@@ -23,7 +33,7 @@ class _MeetingRoomPageState extends State<MeetingRoomPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text("$type 시간 선택"),
+              title: Text("$type 시간 선택 ($day)"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -76,11 +86,9 @@ class _MeetingRoomPageState extends State<MeetingRoomPage> {
                   onPressed: () {
                     setState(() {
                       if (type == "시작") {
-                        startAmPm = tempAmPm;
-                        startHour = tempHour;
+                        startTimes[day] = "${tempHour ?? 4} $tempAmPm";
                       } else {
-                        endAmPm = tempAmPm;
-                        endHour = tempHour;
+                        endTimes[day] = "${tempHour ?? 5} $tempAmPm";
                       }
                     });
                     Navigator.pop(context);
@@ -97,100 +105,119 @@ class _MeetingRoomPageState extends State<MeetingRoomPage> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> days = ["일", "월", "화", "수", "목", "금", "토"];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "미팅 정하기",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          "요일별 가능 여부",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.deepPurple,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group_add, color: Colors.white),
-            onPressed: () {
-              print("친구 초대");
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
           const SizedBox(height: 20),
-          // 시작 시간, 끝나는 시간 버튼
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: () => showTimePickerDialog("시작"),
-                    child: const Text("시작 시간"),
+          // 상단 요일 선택 버튼
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: days.map((day) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: FilterChip(
+                    label: Text(day),
+                    selected: selectedDays[day]!,
+                    onSelected: (selected) {
+                      setState(() {
+                        selectedDays[day] = selected;
+                      });
+                    },
                   ),
-                  if (startHour != null)
-                    Text(
-                      "$startHour $startAmPm",
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                ],
-              ),
-              Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: () => showTimePickerDialog("끝나는"),
-                    child: const Text("끝나는 시간"),
-                  ),
-                  if (endHour != null)
-                    Text(
-                      "$endHour $endAmPm",
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                ],
-              ),
-            ],
+                );
+              }).toList(),
+            ),
           ),
+
           const SizedBox(height: 20),
-          // 요일 표시
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: days
-                .map((day) => Text(
-              day,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ))
-                .toList(),
-          ),
-          const Spacer(),
-          // 겹치는 시간 확인 버튼
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: ElevatedButton(
-              onPressed: () {
-                print("겹치는 시간 확인");
+          // 선택된 요일만 표시
+          Expanded(
+            child: ListView.builder(
+              itemCount: days.where((day) => selectedDays[day]!).length,
+              itemBuilder: (context, index) {
+                final day =
+                    days.where((day) => selectedDays[day]!).toList()[index];
+
+                return Container(
+                  margin:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: const Offset(2, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        day,
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              showTimePickerDialog(day, "시작");
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blueAccent,
+                            ),
+                            child: Text(
+                              startTimes[day] ?? "시작 시간",
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () {
+                              showTimePickerDialog(day, "끝나는");
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orangeAccent,
+                            ),
+                            child: Text(
+                              endTimes[day] ?? "끝나는 시간",
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                availability[day] = null;
+                                startTimes.remove(day);
+                                endTimes.remove(day);
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey,
+                            ),
+                            child: const Text("리셋"),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.greenAccent,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              ),
-              child: const Text(
-                "겹치는 시간 확인",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
             ),
           ),
         ],

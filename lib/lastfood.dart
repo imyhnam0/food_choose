@@ -141,7 +141,7 @@ class _LastfoodPageState extends State<LastfoodPage> {
               ),
               const SizedBox(height: 20),
               Text(
-                '가장 많이 선택된 음식은',
+                '가장 많이 선택된 것은',
                 style: const TextStyle(
                   fontSize: 20,
                   color: Colors.white70,
