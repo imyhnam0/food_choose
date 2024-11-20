@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:foodchoose/meetingroom.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:foodchoose/loginpage.dart';
@@ -14,6 +15,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'foodchoose.dart';
 import 'invitemessage.dart';
 import 'loginpage.dart';
+import 'myinfo.dart';
+import 'meetingroom.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -393,6 +396,17 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         backgroundColor: Colors.deepPurple,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyInfoPage()),
+              );
+            },
+            icon: const Icon(Icons.person, size: 30, color: Colors.white),
+          ),
+        ],
         leading: Container(
           decoration: BoxDecoration(
             border: Border.all(color: Colors.white, width: 2),
@@ -415,7 +429,6 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(color: Colors.white),
             ),
           ),
-
         ),
       ),
       body: Container(
@@ -451,7 +464,7 @@ class _HomePageState extends State<HomePage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          '현재 게임에 참가하지 않았습니다.',
+                          '현재 방에 참가하지 않았습니다.',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
@@ -467,6 +480,7 @@ class _HomePageState extends State<HomePage> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 20),
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -516,6 +530,58 @@ class _HomePageState extends State<HomePage> {
                               },
                               child: const Text(
                                 '받은 초대 메시지',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20), // 첫 번째 버튼 그룹과 두 번째 버튼 그룹 간격
+                        // 두 번째 버튼 그룹: 미팅 정하기, 뽑기
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 50, vertical: 15),
+                                backgroundColor: Colors.greenAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.green,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const MeetingRoomPage()),
+                                );
+                              },
+                              child: const Text(
+                                '미팅 정하기',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 15),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 40, vertical: 15),
+                                backgroundColor: Colors.orangeAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 10,
+                                shadowColor: Colors.orange,
+                              ),
+                              onPressed: () {
+
+                              },
+                              child: const Text(
+                                '제비뽑기',
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.bold),
                               ),
