@@ -3,14 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AvailabilityPage extends StatefulWidget {
-  const AvailabilityPage({Key? key}) : super(key: key);
-
-
+  final String myuid;
+  const AvailabilityPage({super.key, required this.myuid});
 
   @override
   State<AvailabilityPage> createState() => _AvailabilityPageState();
 }
-
 class _AvailabilityPageState extends State<AvailabilityPage> {
   final List<String> days = ["월", "화", "수", "목", "금", "토", "일"];
   final Map<String, String> startTimes = {};
@@ -19,7 +17,6 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? userName;
-
 
   String? _roomId; // 방 ID 저장
 
@@ -31,6 +28,8 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
       selectedDays[day] = false; // 요일 선택 초기화
     }
   }
+
+
 
   // Firestore에서 사용자 이름 가져오기
   Future<void> fetchUserName() async {
@@ -128,9 +127,11 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
     );
   }
 
+
   Future<void> createRoomAndSaveData() async {
     Map<String, Map<String, String>> selectedDayData = {};
 
+    // 선택된 요일 데이터를 정리
     for (String day in days) {
       if (selectedDays[day]!) {
         selectedDayData[day] = {
@@ -140,31 +141,76 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
       }
     }
 
-    final roomId = DateTime.now().millisecondsSinceEpoch.toString();
+    // 기존 방 검색
+    final existingRoomQuery = await _firestore
+        .collection('meetingRooms')
+        .where('participants', arrayContains: widget.myuid)
+        .get();
 
-    await _firestore.collection('meetingRooms').doc(roomId).set({
-      'participants': userName, // 현재 사용자 ID (Firebase Auth로 대체 가능)
-      'availability': selectedDayData,
-    });
+    if (existingRoomQuery.docs.isNotEmpty) {
+      // 기존 방이 있으면 그 방에 데이터를 추가
+      final roomDoc = existingRoomQuery.docs.first;
+      final roomId = roomDoc.id;
+      // 기존 availability 데이터 가져오기
+      final Map<String, dynamic> currentAvailability =
+          roomDoc.data()['availability'] as Map<String, dynamic>? ?? {};
 
-    setState(() {
-      _roomId = roomId; // 생성된 방 ID 저장
-    });
+      // 현재 사용자의 UID로 데이터 추가 또는 업데이트
+      currentAvailability[widget.myuid] = selectedDayData;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("방이 생성되었습니다.")),
-    );
+      await _firestore.collection('meetingRooms').doc(roomId).update({
+        'availability': currentAvailability, // 병합된 데이터 저장
+      });
+
+
+      setState(() {
+        _roomId = roomId; // 기존 방 ID 저장
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("기존 방에 데이터가 추가되었습니다.")),
+      );
+    } else {
+      // 기존 방이 없으면 새 방 생성
+      final roomId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      await _firestore.collection('meetingRooms').doc(roomId).set({
+        'availability': {
+          widget.myuid: selectedDayData, // UID 기준으로 데이터 저장
+        },
+        'participants': [userName], // 현재 사용자 추가
+        'participantDetails': [
+          {'uid': widget.myuid, 'name': userName}
+        ],
+        'readyStatus': {}, // 초기화된 레디 상태
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        _roomId = roomId; // 새로 생성된 방 ID 저장
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("시간이 기록되었습니다.")),
+      );
+    }
   }
 
+
   Future<void> findOverlapAndShowPopup() async {
-    if (_roomId == null) {
+    // 기존 방 검색
+    final existingRoomQuery = await _firestore
+        .collection('meetingRooms')
+        .where('participants', arrayContains: widget.myuid)
+        .get();
+
+    if (existingRoomQuery.docs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("먼저 방을 생성하세요!")),
       );
       return;
     }
-
-    final roomDoc = await _firestore.collection('meetingRooms').doc(_roomId).get();
+    final roomDoc = existingRoomQuery.docs.first;
 
     if (!roomDoc.exists) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -176,35 +222,69 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
     final roomData = roomDoc.data() as Map<String, dynamic>;
     final availability = roomData['availability'] as Map<String, dynamic>;
 
-    Map<String, String> overlap = {};
+    // 결과를 저장할 Map
+    Map<String, String> overlaps = {};
 
-    for (String day in availability.keys) {
-      if (startTimes.containsKey(day) && endTimes.containsKey(day)) {
-        final otherStart = availability[day]['start'];
-        final otherEnd = availability[day]['end'];
-
-        final myStart = startTimes[day]!;
-        final myEnd = endTimes[day]!;
-
-        final start = myStart.compareTo(otherStart) > 0 ? myStart : otherStart;
-        final end = myEnd.compareTo(otherEnd) < 0 ? myEnd : otherEnd;
-
-        if (start.compareTo(end) < 0) {
-          overlap[day] = "$start - $end";
-        }
-      }
+    // 시간을 정렬 및 비교하기 위한 함수
+    int convertTo24HourFormat(String time) {
+      final parts = time.split(' '); // ["10", "AM"] 형태로 나눔
+      final hour = int.parse(parts[0]);
+      final isPm = parts[1] == "PM";
+      return (hour % 12) + (isPm ? 12 : 0); // 12시간 기준을 24시간으로 변환 8 PM -> 20 6 AM -> 6
     }
 
+    // 요일별 교집합 계산
+    Map<String, List<Map<String, String>>> daywiseData = {};
+
+    // 데이터를 요일별로 그룹화
+    availability.forEach((uid, data) {
+      data.forEach((day, times) {
+        if (!daywiseData.containsKey(day)) {
+          daywiseData[day] = [];
+        }
+        daywiseData[day]!.add({
+          'start': times['start'],
+          'end': times['end'],
+        });
+      });
+    });
+
+    // 요일별로 교집합 계산
+    daywiseData.forEach((day, timeRanges) {
+      int? maxStart; // 가장 늦은 시작 시간
+      int? minEnd;   // 가장 빠른 종료 시간
+
+      for (var range in timeRanges) {
+        final otherStart = convertTo24HourFormat(range['start']!);
+        final otherEnd = convertTo24HourFormat(range['end']!);
+
+        if (maxStart == null || otherStart > maxStart) {
+          maxStart = otherStart;
+        }
+
+        if (minEnd == null || otherEnd < minEnd) {
+          minEnd = otherEnd;
+        }
+      }
+
+      // 교집합이 있다면 결과에 추가
+      if (maxStart != null && minEnd != null && maxStart < minEnd) {
+        overlaps[day] = "${maxStart % 12 == 0 ? 12 : maxStart % 12} ${maxStart >= 12 ? 'PM' : 'AM'} - ${minEnd % 12 == 0 ? 12 : minEnd % 12} ${minEnd >= 12 ? 'PM' : 'AM'}";
+      }
+    });
+
+
+    // 결과 출력
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text("겹치는 시간"),
-          content: overlap.isEmpty
+          content: overlaps.isEmpty
               ? const Text("겹치는 시간이 없습니다.")
               : Column(
             mainAxisSize: MainAxisSize.min,
-            children: overlap.entries
+            children: overlaps.entries
                 .map((entry) => Text("${entry.key}: ${entry.value}"))
                 .toList(),
           ),
@@ -220,6 +300,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

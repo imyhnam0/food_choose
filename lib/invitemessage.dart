@@ -52,7 +52,7 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
     // 기존 방 검색
     final existingGameQuery = await _firestore
         .collection(targetCollection)
-        .where('participants', arrayContains: senderUid)
+        .where('participants', arrayContains: Myuid)
         .get();
 
     String gameId;
@@ -63,9 +63,9 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
       gameId = gameDoc.id;
 
       await _firestore.collection(targetCollection).doc(gameId).update({
-        'participants': FieldValue.arrayUnion([Myuid]),
+        'participants': FieldValue.arrayUnion([senderUid]),
         'participantDetails': FieldValue.arrayUnion([
-          {'uid': Myuid, 'name': currentUserName}
+          {'uid': senderUid, 'name': senderName}
         ]),
       });
     } else {
@@ -106,6 +106,7 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
       SnackBar(content: Text('$senderName님의 초대를 수락했습니다.')),
     );
   }
+
   // 초대 거절
   Future<void> rejectInvite(Map<String, dynamic> invite) async {
     final senderName = invite['senderName'];
@@ -133,6 +134,12 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
         ),
         backgroundColor: Colors.deepPurple,
         elevation: 5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(

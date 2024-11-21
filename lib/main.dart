@@ -202,7 +202,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // 초대 요청 수락
+// 초대 요청 수락
   Future<void> acceptInvite(Map<String, dynamic> invite) async {
     final senderName = invite['senderName'];
     final senderUid = invite['senderUid'];
@@ -210,7 +210,7 @@ class _HomePageState extends State<HomePage> {
 
     // Firestore에서 현재 사용자 이름 가져오기
     final currentUserDoc =
-        await _firestore.collection('users').doc(Myuid).get();
+    await _firestore.collection('users').doc(Myuid).get();
     final currentUserName = currentUserDoc['name'];
 
     // 초대 요청 제거
@@ -224,7 +224,7 @@ class _HomePageState extends State<HomePage> {
     // 기존 방 검색
     final existingGameQuery = await _firestore
         .collection(targetCollection)
-        .where('participants', arrayContains: senderUid)
+        .where('participants', arrayContains: Myuid)
         .get();
 
     String gameId;
@@ -235,28 +235,43 @@ class _HomePageState extends State<HomePage> {
       gameId = gameDoc.id;
 
       await _firestore.collection(targetCollection).doc(gameId).update({
-        'participants': FieldValue.arrayUnion([Myuid]),
+        'participants': FieldValue.arrayUnion([senderUid]),
         'participantDetails': FieldValue.arrayUnion([
-          {'uid': Myuid, 'name': currentUserName}
+          {'uid': senderUid, 'name': senderName}
         ]),
       });
     } else {
       // 기존 방이 없으면 새 방 생성
       gameId = DateTime.now().millisecondsSinceEpoch.toString();
+      if(whatGame=='투표 초대'){
+        await _firestore.collection(targetCollection).doc(gameId).set({
+          'participants': [senderUid, Myuid], // 초대한 사람과 현재 사용자 추가
+          'participantDetails': [
+            {'uid': senderUid, 'name': senderName},
+            {'uid': Myuid, 'name': currentUserName}
+          ],
+          'readyStatus': {}, // 초기화된 레디 상태
+          'gameState': 'waiting', // 초기 상태는 대기 상태
+          'foodchoose': 'waiting',
+          'resultfood': 'waiting',
+          'nextStage': 'waiting',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      else{
+        await _firestore.collection(targetCollection).doc(gameId).set({
+          'participants': [senderUid, Myuid], // 초대한 사람과 현재 사용자 추가
+          'participantDetails': [
+            {'uid': senderUid, 'name': senderName},
+            {'uid': Myuid, 'name': currentUserName}
+          ],
+          'readyStatus': {}, // 초기화된 레디 상태
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
-      await _firestore.collection(targetCollection).doc(gameId).set({
-        'participants': [senderUid, Myuid], // 초대한 사람과 현재 사용자 추가
-        'participantDetails': [
-          {'uid': senderUid, 'name': senderName},
-          {'uid': Myuid, 'name': currentUserName}
-        ],
-        'readyStatus': {}, // 초기화된 레디 상태
-        'gameState': 'waiting', // 초기 상태는 대기 상태
-        'foodchoose': 'waiting',
-        'resultfood': 'waiting',
-        'nextStage': 'waiting',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      }
+
+
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -561,7 +576,7 @@ class _HomePageState extends State<HomePage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => const AvailabilityPage()),
+                                      builder: (context) => AvailabilityPage(myuid: Myuid!)),
                                 );
                               },
                               child: const Text(
