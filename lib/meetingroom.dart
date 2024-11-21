@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'meetingroomparti.dart';
 
 class AvailabilityPage extends StatefulWidget {
   final String myuid;
@@ -374,7 +375,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "요일별 가능 여부",
+          "가능 요일",
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.deepPurple,
@@ -385,11 +386,95 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
           },
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ParticipantsPage(myuid: widget.myuid),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              foregroundColor: Colors.green,
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            child: const Text('참가자'),
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
-              leaveRoom();
-              Navigator.pop(context);
+              bool confirm = await showDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    backgroundColor: Colors.deepPurpleAccent.withOpacity(0.9),
+                    title: const Text('방 나가기', style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 5.0,
+                          color: Colors.black45,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+                    ),),
+                    content: const Text('방을 나가시겠습니까?',style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 5.0,
+                          color: Colors.black45,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+                    ),),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          foregroundColor: Colors.redAccent,
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        child: const Text('취소',),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: TextButton.styleFrom(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          foregroundColor: Colors.redAccent,
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (confirm) {
+                await leaveRoom();
+              }
             },
           ),
         ],
@@ -507,7 +592,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
                 child: const Text(
-                  "내 시간 기록",
+                  "일정 저장",
                   style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
