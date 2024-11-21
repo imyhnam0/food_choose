@@ -99,6 +99,7 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, String>> participants = []; // 방 참가자 리스트
   String? gameId; // 현재 사용자가 속한 게임 방 ID
   bool isReady = false; // 내가 준비 상태인지 여부
+  Set<Map<String, dynamic>> processedRequests = {};
 
   @override
   void initState() {
@@ -217,14 +218,19 @@ class _HomePageState extends State<HomePage> {
     await _firestore.collection('users').doc(Myuid).update({
       'gameRequests': FieldValue.arrayRemove([invite]),
     });
+    setState(() {
+      processedRequests.remove(invite); // 수락한 요청을 제거
+    });
+
 
     // 컬렉션 선택: 투표 초대 -> games, 미팅 정하기 -> meetingRooms
     final targetCollection = whatGame == '투표 초대' ? 'games' : 'meetingRooms';
 
+
     // 기존 방 검색
     final existingGameQuery = await _firestore
         .collection(targetCollection)
-        .where('participants', arrayContains: Myuid)
+        .where('participants', arrayContains: senderUid)
         .get();
 
     String gameId;
@@ -235,9 +241,9 @@ class _HomePageState extends State<HomePage> {
       gameId = gameDoc.id;
 
       await _firestore.collection(targetCollection).doc(gameId).update({
-        'participants': FieldValue.arrayUnion([senderUid]),
+        'participants': FieldValue.arrayUnion([Myuid]),
         'participantDetails': FieldValue.arrayUnion([
-          {'uid': senderUid, 'name': senderName}
+          {'uid': Myuid, 'name': currentUserName}
         ]),
       });
     } else {
@@ -270,7 +276,6 @@ class _HomePageState extends State<HomePage> {
         });
 
       }
-
 
     }
 
@@ -459,6 +464,7 @@ class _HomePageState extends State<HomePage> {
             end: Alignment.bottomRight,
           ),
         ),
+
         child: gameId == null
             ? StreamBuilder<DocumentSnapshot>(
                 stream: _firestore.collection('users').doc(Myuid).snapshots(),
@@ -474,9 +480,14 @@ class _HomePageState extends State<HomePage> {
 
                   // 초대 요청이 있을 때 팝업 표시
                   if (gameRequests.isNotEmpty) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      showInviteDialog(gameRequests.last);
-                    });
+                    final latestRequest = gameRequests.last;
+
+                    if (!processedRequests.contains(latestRequest)) {
+                      processedRequests.add(latestRequest);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        showInviteDialog(latestRequest);
+                      });
+                    }
                   }
 
                   return Center(

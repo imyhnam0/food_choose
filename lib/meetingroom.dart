@@ -24,9 +24,76 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
   void initState() {
     super.initState();
     fetchUserName();
+    fetchExistingAvailability();
     for (String day in days) {
       selectedDays[day] = false; // 요일 선택 초기화
     }
+  }
+
+  // Firestore에서 기존의 내 데이터 가져오기
+  Future<void> fetchExistingAvailability() async {
+    final existingRoomQuery = await _firestore
+        .collection('meetingRooms')
+        .where('participants', arrayContains: widget.myuid)
+        .get();
+
+    if (existingRoomQuery.docs.isNotEmpty) {
+      final roomDoc = existingRoomQuery.docs.first;
+      final roomData = roomDoc.data() as Map<String, dynamic>;
+
+      final availability = roomData['availability'] as Map<String, dynamic>?;
+
+      if (availability != null && availability.containsKey(widget.myuid)) {
+        final userAvailability = availability[widget.myuid] as Map<String, dynamic>;
+
+        setState(() {
+          // Firestore에서 가져온 데이터를 startTimes, endTimes, selectedDays에 반영
+          userAvailability.forEach((day, times) {
+            startTimes[day] = times['start'] ?? "없음";
+            endTimes[day] = times['end'] ?? "없음";
+            selectedDays[day] = true; // 선택된 요일 표시
+          });
+        });
+      }
+    }
+  }
+
+  Future<void> leaveRoom() async {
+    // 방 검색
+    final existingRoomQuery = await _firestore
+        .collection('meetingRooms')
+        .where('participants', arrayContains: widget.myuid)
+        .get();
+
+    if (existingRoomQuery.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("현재 참여 중인 방이 없습니다.")),
+      );
+      return;
+    }
+
+    final roomDoc = existingRoomQuery.docs.first;
+    final roomId = roomDoc.id;
+
+    final roomData = roomDoc.data() as Map<String, dynamic>;
+
+    // 방에서 사용자 데이터 제거
+    await _firestore.collection('meetingRooms').doc(roomId).update({
+      'availability.${widget.myuid}': FieldValue.delete(), // availability 내 특정 UID 삭제
+      'participants': FieldValue.arrayRemove([widget.myuid]), // 참가자 목록에서 제거
+      'participantDetails': FieldValue.arrayRemove([
+        {'uid': widget.myuid, 'name': userName}
+      ]), // 참가자 상세 정보에서 제거
+    });
+
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("방에서 나갔습니다.")),
+    );
+
+    setState(() {
+      _roomId = null; // 방 ID 초기화
+    });
   }
 
 
@@ -178,7 +245,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
         'availability': {
           widget.myuid: selectedDayData, // UID 기준으로 데이터 저장
         },
-        'participants': [userName], // 현재 사용자 추가
+        'participants': [widget.myuid], // 현재 사용자 추가
         'participantDetails': [
           {'uid': widget.myuid, 'name': userName}
         ],
@@ -321,7 +388,8 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
-
+              leaveRoom();
+              Navigator.pop(context);
             },
           ),
         ],

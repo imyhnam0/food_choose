@@ -52,7 +52,7 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
     // 기존 방 검색
     final existingGameQuery = await _firestore
         .collection(targetCollection)
-        .where('participants', arrayContains: Myuid)
+        .where('participants', arrayContains: senderUid)
         .get();
 
     String gameId;
@@ -65,7 +65,7 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
       await _firestore.collection(targetCollection).doc(gameId).update({
         'participants': FieldValue.arrayUnion([senderUid]),
         'participantDetails': FieldValue.arrayUnion([
-          {'uid': senderUid, 'name': senderName}
+          {'uid': Myuid, 'name': currentUserName}
         ]),
       });
     } else {
@@ -106,7 +106,6 @@ class _InviteMessagesPageState extends State<InviteMessagesPage> {
       SnackBar(content: Text('$senderName님의 초대를 수락했습니다.')),
     );
   }
-
   // 초대 거절
   Future<void> rejectInvite(Map<String, dynamic> invite) async {
     final senderName = invite['senderName'];
