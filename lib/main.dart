@@ -17,6 +17,7 @@ import 'invitemessage.dart';
 import 'loginpage.dart';
 import 'myinfo.dart';
 import 'meetingroom.dart';
+import 'pickpeople.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -609,7 +610,11 @@ class _HomePageState extends State<HomePage> {
                                 shadowColor: Colors.orange,
                               ),
                               onPressed: () {
-
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => pickPeoplePage()),
+                                );
                               },
                               child: const Text(
                                 '제비뽑기',
